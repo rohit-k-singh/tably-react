@@ -1,0 +1,50 @@
+{"name": "tably-react",
+  "version": "1.0.4",
+  "type": "module",
+  "description": "A customizable React table component with Tailwind CSS",
+"main": "dist/tably-react.cjs.js",
+  "module": "dist/tably-react.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/tably-react.esm.js",
+      "require": "./dist/tably-react.cjs.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "scripts": {
+    "build": "tsc --emitDeclarationOnly && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "react",
+    "table",
+    "component",
+    "tailwind",
+    "typescript",
+    "tably"
+  ],
+  "author": "Rohit Kumar Singh",
+  "license": "ISC"
+,
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "tailwindcss": "^4.1.8",
+    "@types/node": "^22.15.27",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+  }
