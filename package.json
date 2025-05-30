@@ -1,13 +1,19 @@
-{"name": "tably-react",
-  "version": "1.0.4",
+{
+  "name": "tably-react",
+  "version": "1.0.5",
   "type": "module",
   "description": "A customizable React table component with Tailwind CSS",
-"main": "dist/tably-react.cjs.js",
+  "main": "dist/tably-react.cjs.js",
   "module": "dist/tably-react.esm.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rohit-k-singh/tably-react.git"
+  },
+  "homepage": "https://github.com/rohit-k-singh/tably-react#readme",
   "exports": {
     ".": {
       "import": "./dist/tably-react.esm.js",
@@ -31,8 +37,7 @@
     "tably"
   ],
   "author": "Rohit Kumar Singh",
-  "license": "ISC"
-,
+  "license": "ISC",
   "peerDependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
@@ -47,4 +52,4 @@
     "typescript": "^5.8.3",
     "vite": "^6.3.5"
   }
-  }
+}
