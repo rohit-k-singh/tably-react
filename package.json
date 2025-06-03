@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/rohit-k-singh/tably-react.git"
   },
-  "homepage": "https://github.com/rohit-k-singh/tably-react#readme",
+  "homepage": "https://www.npmjs.com/package/tably-react",
   "exports": {
     ".": {
       "import": "./dist/tably-react.esm.js",
