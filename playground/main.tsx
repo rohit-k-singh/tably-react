@@ -49,7 +49,7 @@ const columns: ColumnDef<Person>[] = [
     header: 'Person',
     columns: [
       { accessorKey: 'name', header: 'Name', minWidth: 160 },
-      { accessorKey: 'email', header: 'Email' },
+      { accessorKey: 'email', header: 'Email', width: 260 },
       { accessorKey: 'age', header: 'Age', align: 'end', width: 140 }
     ]
   },
@@ -65,6 +65,7 @@ const columns: ColumnDef<Person>[] = [
   {
     id: 'actions',
     header: '',
+    width: 90,
     enableHiding: false,
     cell: ({ row }) => (
       <button
@@ -123,6 +124,8 @@ function App() {
   const [striped, setStriped] = useState(false)
   const [bordered, setBordered] = useState(false)
   const [dragging, setDragging] = useState(true)
+  const [resizing, setResizing] = useState(true)
+  const [sticky, setSticky] = useState(true)
   const [theme, setTheme] = useState<NonNullable<TableProps<Person>['theme']>>('light')
   const [density, setDensity] = useState<NonNullable<TableProps<Person>['density']>>('standard')
   const [selected, setSelected] = useState<Person | null>(null)
@@ -137,6 +140,8 @@ function App() {
         <Toggle label="Striped" value={striped} onChange={setStriped} />
         <Toggle label="Bordered" value={bordered} onChange={setBordered} />
         <Toggle label="Drag headers" value={dragging} onChange={setDragging} />
+        <Toggle label="Resizable" value={resizing} onChange={setResizing} />
+        <Toggle label="Sticky header" value={sticky} onChange={setSticky} />
         <Choice label="Theme" value={theme} options={['light', 'dark', 'auto']} onChange={setTheme} />
         <Choice
           label="Density"
@@ -153,13 +158,17 @@ function App() {
         getRowId={getRowId}
         showColumnFilters={filters}
         enableColumnDragging={dragging}
+        enableColumnResizing={resizing}
+        enableColumnActions
+        stickyHeader={sticky}
+        maxHeight={sticky ? 420 : undefined}
+        initialState={{ pagination: { pageIndex: 0, pageSize: 10 }, columnPinning: { left: ['name'], right: ['actions'] } }}
         theme={theme}
         density={density}
         striped={striped}
         bordered={bordered}
         highlightOnHover
         enablePagination
-        initialState={{ pagination: { pageIndex: 0, pageSize: 5 } }}
         pageSizeOptions={[5, 10, 25]}
         toolbar={(table) => (
           <>

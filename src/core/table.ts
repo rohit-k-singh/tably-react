@@ -6,6 +6,8 @@ import {
 } from './features/columns'
 import { createFilteringTableApi } from './features/filtering'
 import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
+import { createPinningTableApi, getDefaultColumnPinning } from './features/pinning'
+import { createSizingTableApi } from './features/sizing'
 import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
 import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
@@ -18,7 +20,9 @@ export function getDefaultTableState(): TableState {
     globalFilter: undefined,
     pagination: getDefaultPaginationState(),
     columnVisibility: {},
-    columnOrder: []
+    columnOrder: [],
+    columnSizing: {},
+    columnPinning: getDefaultColumnPinning()
   }
 }
 
@@ -62,9 +66,19 @@ export function createTable<TData extends RowData>(
 
   Object.assign(table, createVisibilityTableApi(table), createColumnOrderTableApi(table))
 
-  table.getVisibleLeafColumns = memo(
+  const getVisibleOrderedLeafColumns = memo(
     () => [table.getOrderedLeafColumns(), table.getState().columnVisibility],
     (columns, _visibility) => columns.filter((column) => column.getIsVisible())
+  )
+  Object.assign(table, createSizingTableApi(table), createPinningTableApi(table, getVisibleOrderedLeafColumns))
+
+  table.getVisibleLeafColumns = memo(
+    () => [getVisibleOrderedLeafColumns(), table.getState().columnPinning],
+    (_columns, _pinning) => [
+      ...table.getLeftLeafColumns(),
+      ...table.getCenterLeafColumns(),
+      ...table.getRightLeafColumns()
+    ]
   )
 
   table.getHeaderGroups = memo(

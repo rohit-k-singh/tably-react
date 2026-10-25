@@ -17,6 +17,20 @@ import type {
   VisibilityTableState
 } from './features/columns'
 import type {
+  PinningColumn,
+  PinningColumnDef,
+  PinningInstance,
+  PinningOptions,
+  PinningTableState
+} from './features/pinning'
+import type {
+  SizingColumn,
+  SizingColumnDef,
+  SizingInstance,
+  SizingOptions,
+  SizingTableState
+} from './features/sizing'
+import type {
   PaginationInstance,
   PaginationOptions,
   PaginationTableState
@@ -107,16 +121,23 @@ export type Renderable<TContext> =
 export interface ColumnDefBase<TData extends RowData, TValue>
   extends SortingColumnDef<TData>,
     FilteringColumnDef<TData>,
-    VisibilityColumnDef {
+    VisibilityColumnDef,
+    SizingColumnDef,
+    PinningColumnDef {
   /** Header cell content. Defaults to the column id. */
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
   cell?: Renderable<CellContext<TData, TValue>>
   /** Horizontal alignment of the header and body cells, e.g. `'end'` for numbers. */
   align?: 'start' | 'center' | 'end'
-  /** Column width: a number of pixels or any CSS length. */
+  /**
+   * Column width: a number of pixels or any CSS length. Numbers are also the
+   * starting width for resizing and pinning (strings use `defaultColumnWidth` there).
+   */
   width?: number | string
+  /** Minimum width; numbers also limit resizing (default 40 px). */
   minWidth?: number | string
+  /** Maximum width; numbers also limit resizing. */
   maxWidth?: number | string
   /** Class name added to every body cell of the column. */
   className?: string
@@ -194,7 +215,9 @@ export interface AnyColumnDef<TData extends RowData> extends ColumnDefBase<TData
 export interface Column<TData extends RowData>
   extends SortingColumn<TData>,
     FilteringColumn<TData>,
-    VisibilityColumn {
+    VisibilityColumn,
+    SizingColumn,
+    PinningColumn {
   id: string
   /** The definition this column was created from. */
   columnDef: AnyColumnDef<TData>
@@ -222,6 +245,8 @@ export interface Header<TData extends RowData> {
   rowSpan: number
   /** Header row this header belongs to. */
   depth: number
+  /** The visible leaf columns under this header, in display order. */
+  leafColumns: Column<TData>[]
   getContext: () => HeaderContext<TData>
 }
 
@@ -265,14 +290,18 @@ export interface TableState
     FilteringTableState,
     PaginationTableState,
     VisibilityTableState,
-    ColumnOrderTableState {}
+    ColumnOrderTableState,
+    SizingTableState,
+    PinningTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
     FilteringOptions<TData>,
     PaginationOptions,
     VisibilityOptions,
-    ColumnOrderOptions {
+    ColumnOrderOptions,
+    SizingOptions,
+    PinningOptions {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -296,7 +325,9 @@ export interface TableInstance<TData extends RowData>
     FilteringInstance<TData>,
     PaginationInstance<TData>,
     VisibilityInstance,
-    ColumnOrderInstance<TData> {
+    ColumnOrderInstance<TData>,
+    SizingInstance,
+    PinningInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState
@@ -308,7 +339,7 @@ export interface TableInstance<TData extends RowData>
   getAllFlatColumns: () => Column<TData>[]
   /** Every non-group column, in definition order. */
   getAllLeafColumns: () => Column<TData>[]
-  /** Visible non-group columns, in display order. */
+  /** Visible non-group columns in display order: pinned left, unpinned, pinned right. */
   getVisibleLeafColumns: () => Column<TData>[]
   /** Header rows for the visible columns, top to bottom. */
   getHeaderGroups: () => HeaderGroup<TData>[]

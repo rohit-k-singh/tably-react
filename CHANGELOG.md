@@ -7,6 +7,9 @@
   (`enableColumnDragging`).
 - `table.getAllColumns()` now returns top-level columns; use `getAllLeafColumns()` or `getVisibleLeafColumns()`
   for the flat list, `getHeaderGroups()` for header rows and `row.getVisibleCells()` for cells.
+- Column resizing (`enableColumnResizing`) with pointer and keyboard handles, column pinning, a column actions menu
+  (`enableColumnActions`) and a sticky header (`stickyHeader` + `maxHeight`).
+- The table now uses `border-collapse: separate` so borders stay attached to sticky cells.
 
 ## 0.0.1
 

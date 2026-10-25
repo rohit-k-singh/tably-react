@@ -27,6 +27,24 @@ export type {
   VisibilityOptions,
   VisibilityTableState
 } from './core/features/columns'
+export { getDefaultColumnPinning } from './core/features/pinning'
+export type {
+  ColumnPinningPosition,
+  ColumnPinningState,
+  PinningColumn,
+  PinningColumnDef,
+  PinningInstance,
+  PinningOptions,
+  PinningTableState
+} from './core/features/pinning'
+export type {
+  ColumnSizingState,
+  SizingColumn,
+  SizingColumnDef,
+  SizingInstance,
+  SizingOptions,
+  SizingTableState
+} from './core/features/sizing'
 export { filterFns } from './core/features/filtering'
 export type {
   BuiltInFilterFn,

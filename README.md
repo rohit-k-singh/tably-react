@@ -12,7 +12,8 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
-- Columns: multi-level header groups, show / hide and reorder (menu or drag and drop)
+- Columns: multi-level header groups, show / hide and reorder (menu or drag and drop), resize, pin left / right,
+  per-column actions menu, sticky header
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 > **Status: early release (0.x).** The API may still change between minor versions until 1.0.
@@ -293,6 +294,46 @@ In code: `column.toggleVisibility(visible?)`, `column.getIsVisible()`, `table.to
 `table.resetColumnOrder()`. A hidden group hides all its columns. When reordering separates the columns of a group,
 its header is repeated over each part.
 
+## Column sizing, pinning and sticky header
+
+```tsx
+<Table
+  data={users}
+  columns={columns}
+  enableColumnResizing
+  enableColumnActions
+  stickyHeader
+  maxHeight={480}
+  initialState={{ columnPinning: { left: ['name'], right: ['actions'] } }}
+/>
+```
+
+- **Resizing** (`enableColumnResizing`): drag the handle on a header's edge, or focus it and use the arrow keys
+  (Shift for bigger steps, Home for the minimum, Enter or double-click to reset). The table then uses fixed column
+  widths: a numeric `width`, or `defaultColumnWidth` (150), limited by numeric `minWidth` (default 40) / `maxWidth`.
+- **Pinning**: pinned columns stay visible while scrolling horizontally. Pin with `column.pin('left' | 'right' | false)`,
+  the column actions menu, or `initialState.columnPinning`. Groups pin all their columns, and a group's header splits
+  at the edge of the pinned area.
+- **Column actions** (`enableColumnActions`): a ⋮ button in each header (shown on hover or focus) opens a menu to
+  sort, pin, hide or reset the width. It supports the arrow keys, Home / End and Escape.
+- **Sticky header** (`stickyHeader` with `maxHeight`): the header stays at the top while the body scrolls inside the
+  table.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enableColumnResizing` | `false` | Resize handles and fixed column widths. |
+| `enableResizing` (column) | `true` | Allow resizing this column. |
+| `defaultColumnWidth` | `150` | Width of columns without a numeric `width`, for resizing and pinning. |
+| `initialState.columnSizing`, `state.columnSizing` + `onColumnSizingChange` | `{}` | Widths set by resizing, e.g. to save them. |
+| `enableColumnPinning` (table) / `enablePinning` (column) | `true` | Allow pinning. |
+| `initialState.columnPinning`, `state.columnPinning` + `onColumnPinningChange` | `{ left: [], right: [] }` | Pinned column ids, in display order. |
+| `enableColumnActions` | `false` | Header actions menus (`<Table>` only). |
+| `stickyHeader`, `maxHeight` | | Sticky header within a scroll area of at most `maxHeight` (`<Table>` only). |
+
+In code: `column.getSize()`, `column.setSize(px)`, `column.resetSize()`, `table.getTotalSize()`,
+`table.resetColumnSizing()`, `column.getIsPinned()`, `column.getPinnedOffset()`, `table.getLeftLeafColumns()`,
+`table.getCenterLeafColumns()`, `table.getRightLeafColumns()` and `table.resetColumnPinning()`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -301,7 +342,7 @@ its header is repeated over each part.
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -443,7 +484,8 @@ With Tailwind, use `classNames` (and skip the stylesheet if you style everything
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
 `tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
 `tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
-`tably-menu`, `tably-button`, `tably-icon-button`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-menu`, `tably-button`, `tably-icon-button`, `tably-th-content`, `tably-column-actions`, `tably-resize-handle`,
+`tably-popover`, `[data-pinned]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

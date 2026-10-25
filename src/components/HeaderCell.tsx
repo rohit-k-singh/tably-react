@@ -1,7 +1,10 @@
 import { useState, type CSSProperties, type DragEvent } from 'react'
 import type { Header, RowData, TableInstance } from '../core/types'
 import { flexRender } from '../react/flexRender'
+import { headerPinnedAttributes } from './cellStyle'
+import { ColumnActionsMenu } from './ColumnActionsMenu'
 import { cx } from './cx'
+import { ResizeHandle } from './ResizeHandle'
 
 export interface HeaderDragging {
   draggedColumnId: string | undefined
@@ -15,13 +18,15 @@ export function HeaderCell<TData extends RowData>({
   header,
   className,
   style,
-  dragging
+  dragging,
+  showActions
 }: {
   table: TableInstance<TData>
   header: Header<TData>
   className?: string
   style?: CSSProperties
   dragging?: HeaderDragging
+  showActions?: boolean
 }) {
   const { column } = header
   const { header: content, headerClassName, align } = column.columnDef
@@ -75,21 +80,26 @@ export function HeaderCell<TData extends RowData>({
       data-align={align}
       aria-sort={sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : undefined}
       style={style}
+      {...headerPinnedAttributes(header)}
       {...dragProps}
     >
-      {canSort ? (
-        <button type="button" className="tably-sort-button" onClick={column.getToggleSortingHandler()}>
-          {rendered}
-          <SortIndicator direction={sorted} />
-          {sorted && sorting.length > 1 && (
-            <span className="tably-sort-index" aria-hidden="true">
-              {column.getSortIndex() + 1}
-            </span>
-          )}
-        </button>
-      ) : (
-        rendered
-      )}
+      <div className="tably-th-content">
+        {canSort ? (
+          <button type="button" className="tably-sort-button" onClick={column.getToggleSortingHandler()}>
+            {rendered}
+            <SortIndicator direction={sorted} />
+            {sorted && sorting.length > 1 && (
+              <span className="tably-sort-index" aria-hidden="true">
+                {column.getSortIndex() + 1}
+              </span>
+            )}
+          </button>
+        ) : (
+          rendered
+        )}
+        {showActions && !isGroup && <ColumnActionsMenu column={column} />}
+      </div>
+      {column.getCanResize() && <ResizeHandle column={column} />}
     </th>
   )
 }
