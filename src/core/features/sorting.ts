@@ -226,7 +226,7 @@ export function createSortingTableApi<TData extends RowData>(
     resetSorting: (defaultState) => table.setSorting(defaultState ? [] : table.initialState.sorting),
     getPreSortedRowModel,
     getSortedRowModel: memo(
-      () => [getPreSortedRowModel(), table.getState().sorting, table.options.manualSorting, table.getAllColumns()],
+      () => [getPreSortedRowModel(), table.getState().sorting, table.options.manualSorting, table.getAllLeafColumns()],
       (rowModel, sorting, manualSorting, _columns) =>
         manualSorting || sorting.length === 0 ? rowModel : sortRowModel(table, rowModel.rows, sorting)
     )

@@ -7,6 +7,16 @@ import type {
   FilteringTableState
 } from './features/filtering'
 import type {
+  ColumnOrderInstance,
+  VisibilityColumnDef,
+  ColumnOrderOptions,
+  ColumnOrderTableState,
+  VisibilityColumn,
+  VisibilityInstance,
+  VisibilityOptions,
+  VisibilityTableState
+} from './features/columns'
+import type {
   PaginationInstance,
   PaginationOptions,
   PaginationTableState
@@ -71,6 +81,8 @@ export interface ColumnMeta<TData, TValue> {}
 export interface HeaderContext<TData extends RowData> {
   table: TableInstance<TData>
   column: Column<TData>
+  /** The header cell being rendered; undefined in the filter row. */
+  header?: Header<TData>
 }
 
 export interface CellContext<TData extends RowData, TValue> {
@@ -94,7 +106,8 @@ export type Renderable<TContext> =
 
 export interface ColumnDefBase<TData extends RowData, TValue>
   extends SortingColumnDef<TData>,
-    FilteringColumnDef<TData> {
+    FilteringColumnDef<TData>,
+    VisibilityColumnDef {
   /** Header cell content. Defaults to the column id. */
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
@@ -124,6 +137,7 @@ export interface AccessorKeyColumnDef<TData extends RowData, TKey extends DeepKe
   /** Unique column id. Defaults to `accessorKey`. */
   id?: string
   accessorFn?: never
+  columns?: never
 }
 
 export interface AccessorFnColumnDef<TData extends RowData, TValue>
@@ -133,12 +147,24 @@ export interface AccessorFnColumnDef<TData extends RowData, TValue>
   /** Unique column id. */
   id: string
   accessorKey?: never
+  columns?: never
 }
 
 /** A column without a value, e.g. for row actions. */
 export interface DisplayColumnDef<TData extends RowData> extends ColumnDefBase<TData, unknown> {
   /** Unique column id. */
   id: string
+  accessorKey?: never
+  accessorFn?: never
+  columns?: never
+}
+
+/** A header spanning several columns. */
+export interface GroupColumnDef<TData extends RowData> extends ColumnDefBase<TData, unknown> {
+  /** The grouped columns, which can be groups themselves. */
+  columns: ColumnDef<TData>[]
+  /** Unique column id. Defaults to `header` when it is a string. */
+  id?: string
   accessorKey?: never
   accessorFn?: never
 }
@@ -155,24 +181,54 @@ export type ColumnDef<TData extends RowData> =
   | AccessorKeyColumnDefs<TData>
   | AccessorFnColumnDef<TData, any>
   | DisplayColumnDef<TData>
+  | GroupColumnDef<TData>
 
 /** Any column definition, with the per-column value type erased. */
 export interface AnyColumnDef<TData extends RowData> extends ColumnDefBase<TData, any> {
   id?: string
   accessorKey?: string
   accessorFn?: (row: TData, index: number) => unknown
+  columns?: ColumnDef<TData>[]
 }
 
 export interface Column<TData extends RowData>
   extends SortingColumn<TData>,
-    FilteringColumn<TData> {
+    FilteringColumn<TData>,
+    VisibilityColumn {
   id: string
   /** The definition this column was created from. */
   columnDef: AnyColumnDef<TData>
-  /** Position of the column in the `columns` option. */
+  /** Position among its siblings in the column definitions. */
   index: number
-  /** Reads this column's value from a row. Undefined for display columns. */
+  /** Nesting level: 0 for top-level columns, 1 inside a group, and so on. */
+  depth: number
+  /** The group containing this column. */
+  parent?: Column<TData>
+  /** Child columns of a group; empty for other columns. */
+  columns: Column<TData>[]
+  /** The non-group columns under this column, or the column itself. */
+  getLeafColumns: () => Column<TData>[]
+  /** Reads this column's value from a row. Undefined for display and group columns. */
   accessorFn?: (row: TData, index: number) => unknown
+}
+
+/** A cell in a header row. Group headers span the visible columns they contain. */
+export interface Header<TData extends RowData> {
+  id: string
+  column: Column<TData>
+  /** Number of columns the header spans. */
+  colSpan: number
+  /** Number of header rows the header spans; columns outside groups span every row below their level. */
+  rowSpan: number
+  /** Header row this header belongs to. */
+  depth: number
+  getContext: () => HeaderContext<TData>
+}
+
+export interface HeaderGroup<TData extends RowData> {
+  id: string
+  depth: number
+  headers: Header<TData>[]
 }
 
 export interface Row<TData extends RowData> {
@@ -184,8 +240,10 @@ export interface Row<TData extends RowData> {
   original: TData
   /** Value of the given column for this row. Cached after the first read. */
   getValue: <TValue = unknown>(columnId: string) => TValue
-  /** One cell per column. */
+  /** One cell per leaf column, in definition order. */
   getCells: () => Cell<TData>[]
+  /** Cells of the visible columns, in display order. */
+  getVisibleCells: () => Cell<TData>[]
 }
 
 export interface Cell<TData extends RowData> {
@@ -202,12 +260,19 @@ export interface RowModel<TData extends RowData> {
   rowsById: Record<string, Row<TData>>
 }
 
-export interface TableState extends SortingTableState, FilteringTableState, PaginationTableState {}
+export interface TableState
+  extends SortingTableState,
+    FilteringTableState,
+    PaginationTableState,
+    VisibilityTableState,
+    ColumnOrderTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
     FilteringOptions<TData>,
-    PaginationOptions {
+    PaginationOptions,
+    VisibilityOptions,
+    ColumnOrderOptions {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -229,13 +294,25 @@ export interface ResolvedTableOptions<TData extends RowData> extends TableOption
 export interface TableInstance<TData extends RowData>
   extends SortingInstance<TData>,
     FilteringInstance<TData>,
-    PaginationInstance<TData> {
+    PaginationInstance<TData>,
+    VisibilityInstance,
+    ColumnOrderInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState
   /** Initial state, including `initialState` overrides. */
   initialState: TableState
+  /** Top-level columns; groups hold their children in `columns`. */
   getAllColumns: () => Column<TData>[]
+  /** Every column, including groups, flattened. */
+  getAllFlatColumns: () => Column<TData>[]
+  /** Every non-group column, in definition order. */
+  getAllLeafColumns: () => Column<TData>[]
+  /** Visible non-group columns, in display order. */
+  getVisibleLeafColumns: () => Column<TData>[]
+  /** Header rows for the visible columns, top to bottom. */
+  getHeaderGroups: () => HeaderGroup<TData>[]
+  /** Finds a column (including groups) by id. */
   getColumn: (columnId: string) => Column<TData> | undefined
   /** Every row in `data`, before any processing. */
   getCoreRowModel: () => RowModel<TData>

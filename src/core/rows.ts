@@ -8,6 +8,7 @@ export function createRow<TData extends RowData>(
 ): Row<TData> {
   const valueCache = new Map<string, unknown>()
   let cells: Cell<TData>[] | undefined
+  let cellsByColumn: Map<string, Cell<TData>> | undefined
 
   const row: Row<TData> = {
     id,
@@ -20,7 +21,11 @@ export function createRow<TData extends RowData>(
       }
       return valueCache.get(columnId) as TValue
     },
-    getCells: () => (cells ??= table.getAllColumns().map((column) => createCell(table, row, column)))
+    getCells: () => (cells ??= table.getAllLeafColumns().map((column) => createCell(table, row, column))),
+    getVisibleCells: () => {
+      cellsByColumn ??= new Map(row.getCells().map((cell) => [cell.column.id, cell]))
+      return table.getVisibleLeafColumns().map((column) => cellsByColumn!.get(column.id)!)
+    }
   }
 
   return row

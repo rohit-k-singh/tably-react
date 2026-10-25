@@ -58,6 +58,25 @@ describe('types', () => {
     void missingId
   })
 
+  it('types columns inside groups', () => {
+    const columns: ColumnDef<Person>[] = [
+      {
+        header: 'Person',
+        columns: [
+          {
+            accessorKey: 'age',
+            cell: ({ getValue }) => {
+              expectTypeOf(getValue()).toEqualTypeOf<number>()
+              return null
+            }
+          },
+          { header: 'Nested', columns: [{ accessorKey: 'address.city' }] }
+        ]
+      }
+    ]
+    void columns
+  })
+
   it('infers accessorFn values with the column helper', () => {
     const column = createColumnHelper<Person>()
     const columns: ColumnDef<Person>[] = [

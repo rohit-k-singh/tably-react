@@ -1,4 +1,9 @@
-import { createColumns } from './columns'
+import { createColumns, flattenColumns } from './columns'
+import {
+  buildHeaderGroups,
+  createColumnOrderTableApi,
+  createVisibilityTableApi
+} from './features/columns'
 import { createFilteringTableApi } from './features/filtering'
 import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
 import { createSortingTableApi } from './features/sorting'
@@ -11,7 +16,9 @@ export function getDefaultTableState(): TableState {
     sorting: [],
     columnFilters: [],
     globalFilter: undefined,
-    pagination: getDefaultPaginationState()
+    pagination: getDefaultPaginationState(),
+    columnVisibility: {},
+    columnOrder: []
   }
 }
 
@@ -37,11 +44,33 @@ export function createTable<TData extends RowData>(
     (columnDefs) => createColumns(table, columnDefs)
   )
 
-  const getColumnsById = memo(
+  table.getAllFlatColumns = memo(
     () => [table.getAllColumns()],
+    (columns) => flattenColumns(columns)
+  )
+
+  table.getAllLeafColumns = memo(
+    () => [table.getAllColumns()],
+    (columns) => columns.flatMap((column) => column.getLeafColumns())
+  )
+
+  const getColumnsById = memo(
+    () => [table.getAllFlatColumns()],
     (columns) => new Map(columns.map((column) => [column.id, column]))
   )
   table.getColumn = (columnId) => getColumnsById().get(columnId)
+
+  Object.assign(table, createVisibilityTableApi(table), createColumnOrderTableApi(table))
+
+  table.getVisibleLeafColumns = memo(
+    () => [table.getOrderedLeafColumns(), table.getState().columnVisibility],
+    (columns, _visibility) => columns.filter((column) => column.getIsVisible())
+  )
+
+  table.getHeaderGroups = memo(
+    () => [table.getVisibleLeafColumns()],
+    (leaves) => buildHeaderGroups(table, leaves)
+  )
 
   table.getCoreRowModel = memo(
     () => [table.options.data, table.getAllColumns()],
