@@ -55,6 +55,18 @@ export type {
   SelectionRow,
   SelectionTableState
 } from './core/features/selection'
+export { aggregationFns } from './core/features/grouping'
+export type {
+  AggregationFn,
+  BuiltInAggregationFn,
+  GroupingColumn,
+  GroupingColumnDef,
+  GroupingInstance,
+  GroupingOptions,
+  GroupingRow,
+  GroupingState,
+  GroupingTableState
+} from './core/features/grouping'
 export { filterFns } from './core/features/filtering'
 export type {
   BuiltInFilterFn,

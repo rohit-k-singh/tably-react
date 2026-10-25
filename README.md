@@ -12,6 +12,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
+- Grouping and aggregation: group by one or more columns, built-in or custom aggregations, footer totals
 - Virtualization: render only the visible rows of tens of thousands, with measured (variable) row heights
 - Expanding rows: tree data with indentation, or detail panels under rows
 - Row selection: checkboxes, select all (filtered rows or page), Shift-click ranges, single selection
@@ -409,6 +410,52 @@ In code: `row.toggleExpanded(expanded?)`, `row.getIsExpanded()`, `row.getCanExpa
 `table.resetExpanded()`. Row models have `rows` (top level) and `flatRows` (every row); `table.getRowModel().rows`
 is the flat list of rows to render.
 
+## Grouping, aggregation and footers
+
+```tsx
+const columns: ColumnDef<Sale>[] = [
+  { accessorKey: 'region', header: 'Region' },
+  { accessorKey: 'product', header: 'Product' },
+  {
+    accessorKey: 'amount',
+    header: 'Amount',
+    aggregationFn: 'sum',
+    footer: ({ column }) => `Total: ${column.getAggregatedValue()}`
+  }
+]
+
+<Table data={sales} columns={columns} initialState={{ grouping: ['region'] }} enableColumnActions />
+```
+
+Grouping creates a group row per value, with the grouped rows as its sub rows (collapsed until expanded). The grouping
+column's cell shows an expand button, the value and the row count; other columns show their aggregated value (via
+`aggregationFn`), or nothing. Users can group and ungroup from the column actions menu.
+
+- Grouping happens after filtering and before sorting, so groups sort by their aggregated values.
+- Several columns nest groups: `grouping: ['region', 'product']`.
+- Grouped columns move to the start (`groupedColumnMode="reorder"`), or are hidden (`"remove"`) or left in place
+  (`false`).
+- Selecting a group row selects its rows; only data rows are stored in `rowSelection`.
+
+Built-in `aggregationFn`s: `sum`, `min`, `max`, `extent`, `mean`, `median`, `unique`, `uniqueCount` and `count`, or a
+function `(columnId, leafRows) => value`. Render aggregated cells with `aggregatedCell`.
+
+**Footers**: a column's `footer` (static or `({ table, column }) => …`) renders in a `<tfoot>` row, which sticks to
+the bottom with `stickyHeader`. `column.getAggregatedValue()` aggregates the rows matching the filters (memoized),
+for totals.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `initialState.grouping`, `state.grouping` + `onGroupingChange` | `[]` | Grouped column ids, outermost first. |
+| `enableGrouping` (table or column) | `true` | Allow grouping. |
+| `groupedColumnMode` | `'reorder'` | `'reorder'`, `'remove'` or `false`. |
+| `manualGrouping` | `false` | Rows are grouped elsewhere; only the state is tracked. |
+| `aggregationFn`, `aggregatedCell`, `footer` (column) | | See above. |
+
+In code: `column.toggleGrouping()`, `column.getIsGrouped()`, `row.getIsGrouped()`, `row.groupingColumnId`,
+`row.groupingValue`, `cell.getIsGrouped()`, `cell.getIsAggregated()`, `cell.getIsPlaceholder()`,
+`table.getGroupedRowModel()` and `table.getFooterGroups()`.
+
 ## Virtualization
 
 For large row counts without pagination, render only the rows in view:
@@ -444,12 +491,12 @@ with a `data-index`) and `scrollToIndex(index, align)`.
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection), [Expanding rows](#expanding-rows) and [Virtualization](#virtualization). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection), [Expanding rows](#expanding-rows), [Grouping](#grouping-aggregation-and-footers) and [Virtualization](#virtualization). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
 | `className` | `string` | | Class added to the outer container. |
-| `classNames` | `TableClassNames` | | Classes for each part: `container`, `toolbar`, `scroll`, `table`, `caption`, `thead`, `headerRow`, `th`, `filterRow`, `filterCell`, `tbody`, `tr`, `td`, `empty`, `loading`, `footer`. |
+| `classNames` | `TableClassNames` | | Classes for each part: `container`, `toolbar`, `scroll`, `table`, `caption`, `thead`, `headerRow`, `th`, `filterRow`, `filterCell`, `tbody`, `tr`, `td`, `tfoot`, `tf`, `empty`, `loading`, `footer`. |
 | `rowClassName` | `string \| (row) => string` | | Class for each body row. |
 | `getRowProps` | `(row) => attributes` | | Extra attributes or handlers for each body row. Calling `event.preventDefault()` in its `onClick` skips `onRowClick`. |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'light'` | Theme of the default stylesheet; `'auto'` follows the OS. |
@@ -591,7 +638,7 @@ To style from scratch, skip the stylesheet and target the class names: `tably-co
 `tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
 `tably-menu`, `tably-button`, `tably-icon-button`, `tably-th-content`, `tably-column-actions`, `tably-resize-handle`,
 `tably-popover`, `[data-pinned]`, `tably-checkbox`, `tably-select-cell`, `[data-selected]`, `tably-tree-cell`, `tably-expand-button`, `tably-expand-cell`,
-`tably-detail-row`, `tably-detail-cell`, `[data-depth]`, `tably-spacer`, `[data-stripe]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-detail-row`, `tably-detail-cell`, `[data-depth]`, `tably-spacer`, `[data-stripe]`, `tably-group-row`, `tably-group-content`, `tably-group-count`, `tably-tfoot`, `tably-tf`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

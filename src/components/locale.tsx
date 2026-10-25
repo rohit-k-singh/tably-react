@@ -55,6 +55,10 @@ export interface TableLocaleText {
   collapseRow: string
   expandAllRows: string
   collapseAllRows: string
+  groupByColumn: string
+  ungroupColumn: string
+  /** Number of rows in a group, shown after its value. */
+  groupRowCount: (count: number) => string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -101,7 +105,10 @@ export const defaultLocaleText: TableLocaleText = {
   expandRow: 'Expand row',
   collapseRow: 'Collapse row',
   expandAllRows: 'Expand all rows',
-  collapseAllRows: 'Collapse all rows'
+  collapseAllRows: 'Collapse all rows',
+  groupByColumn: 'Group by this column',
+  ungroupColumn: 'Ungroup',
+  groupRowCount: (count) => `(${count})`
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

@@ -15,6 +15,8 @@
 - Expanding rows: tree data (`getSubRows`) with per-level sorting, ancestor-preserving filtering and sub row selection,
   and detail panels (`renderDetailPanel`). Row models now have `flatRows`, and rows have `depth`, `parentId`,
   `subRows`, `getParentRow`, `getParentRows` and `getLeafRows`.
+- Grouping by one or more columns with aggregation (`aggregationFn`, `aggregatedCell`), grouping from the column
+  actions menu, column footers (`footer`) and `column.getAggregatedValue()`.
 - Row virtualization (`enableVirtualization`) with measured row heights, and the `useVirtualizer` hook.
 - Striped rows now use a `data-stripe` attribute instead of `:nth-child(even)`, so stripes follow the data order
   with detail rows and virtualization.

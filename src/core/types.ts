@@ -30,6 +30,14 @@ import type {
   ExpandingTableState
 } from './features/expanding'
 import type {
+  GroupingColumn,
+  GroupingColumnDef,
+  GroupingInstance,
+  GroupingOptions,
+  GroupingRow,
+  GroupingTableState
+} from './features/grouping'
+import type {
   SelectionInstance,
   SelectionOptions,
   SelectionRow,
@@ -135,11 +143,16 @@ export interface ColumnDefBase<TData extends RowData, TValue>
     FilteringColumnDef<TData>,
     VisibilityColumnDef,
     SizingColumnDef,
-    PinningColumnDef {
+    PinningColumnDef,
+    GroupingColumnDef<TData> {
   /** Header cell content. Defaults to the column id. */
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
   cell?: Renderable<CellContext<TData, TValue>>
+  /** Content of this column's cells in group rows. Defaults to the formatted aggregated value. */
+  aggregatedCell?: Renderable<CellContext<TData, unknown>>
+  /** Footer cell content, e.g. `({ column }) => column.getAggregatedValue()`. */
+  footer?: Renderable<HeaderContext<TData>>
   /** Horizontal alignment of the header and body cells, e.g. `'end'` for numbers. */
   align?: 'start' | 'center' | 'end'
   /**
@@ -229,7 +242,8 @@ export interface Column<TData extends RowData>
     FilteringColumn<TData>,
     VisibilityColumn,
     SizingColumn,
-    PinningColumn {
+    PinningColumn,
+    GroupingColumn<TData> {
   id: string
   /** The definition this column was created from. */
   columnDef: AnyColumnDef<TData>
@@ -268,7 +282,7 @@ export interface HeaderGroup<TData extends RowData> {
   headers: Header<TData>[]
 }
 
-export interface Row<TData extends RowData> extends SelectionRow, ExpandingRow {
+export interface Row<TData extends RowData> extends SelectionRow, ExpandingRow, GroupingRow {
   /**
    * Unique row id from `getRowId`. Defaults to the row index, and to
    * `${parentId}.${index}` for sub rows.
@@ -304,6 +318,12 @@ export interface Cell<TData extends RowData> {
   column: Column<TData>
   getValue: <TValue = unknown>() => TValue
   getContext: () => CellContext<TData, unknown>
+  /** The grouping column's cell in its group row. */
+  getIsGrouped: () => boolean
+  /** A grouped column's cell in a row below its group (its value is shown in the group row). */
+  getIsPlaceholder: () => boolean
+  /** A cell showing an aggregated value in a group row. */
+  getIsAggregated: () => boolean
 }
 
 export interface RowModel<TData extends RowData> {
@@ -323,7 +343,8 @@ export interface TableState
     SizingTableState,
     PinningTableState,
     SelectionTableState,
-    ExpandingTableState {}
+    ExpandingTableState,
+    GroupingTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
@@ -334,7 +355,8 @@ export interface TableOptions<TData extends RowData>
     SizingOptions,
     PinningOptions,
     SelectionOptions<TData>,
-    ExpandingOptions<TData> {
+    ExpandingOptions<TData>,
+    GroupingOptions {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -365,7 +387,8 @@ export interface TableInstance<TData extends RowData>
     SizingInstance,
     PinningInstance<TData>,
     SelectionInstance<TData>,
-    ExpandingInstance<TData> {
+    ExpandingInstance<TData>,
+    GroupingInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState
@@ -381,6 +404,8 @@ export interface TableInstance<TData extends RowData>
   getVisibleLeafColumns: () => Column<TData>[]
   /** Header rows for the visible columns, top to bottom. */
   getHeaderGroups: () => HeaderGroup<TData>[]
+  /** Footer rows: the header rows in reverse order, for rendering column footers. */
+  getFooterGroups: () => HeaderGroup<TData>[]
   /** Finds a column (including groups) by id. */
   getColumn: (columnId: string) => Column<TData> | undefined
   /** Every row in `data`, before any processing. */

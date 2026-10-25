@@ -25,7 +25,8 @@ export function TablePagination<TData extends RowData>({
   const pageIndex = table.getPageIndex()
   const pageCount = table.getPageCount()
   const rowCount = table.getRowCount()
-  const pageRows = table.getRowModel().rows.length
+  // Top-level rows on this page (expanded sub rows are not counted).
+  const pageRows = table.getPaginationRowModel().rows.length
 
   const from = pageRows === 0 ? 0 : pageIndex * pageSize + 1
   const to = pageRows === 0 ? 0 : pageIndex * pageSize + pageRows

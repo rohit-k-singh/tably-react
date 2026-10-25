@@ -9,6 +9,7 @@ import { headerStyle, leafCellStyle, pinnedAttributes } from './cellStyle'
 import { formatValue } from './formatValue'
 import { HeaderCell } from './HeaderCell'
 import { TableLocaleProvider, useLocaleText, type TableLocaleText } from './locale'
+import { getDataLeafRows } from '../core/features/grouping'
 import { ExpandAllToggle, ExpandToggle } from './ExpandToggle'
 import { createSelectionColumn, SELECTION_COLUMN_ID, type SelectAllScope } from './selectionColumn'
 import { TablePagination } from './TablePagination'
@@ -30,6 +31,8 @@ export interface TableClassNames {
   td?: string
   empty?: string
   loading?: string
+  tfoot?: string
+  tf?: string
   footer?: string
 }
 
@@ -177,6 +180,7 @@ function TableContent<TData extends RowData>({
   const detailIdPrefix = useId()
   // Tree data: the first data column shows the expand buttons, indented by depth.
   const isTree = table.getCoreRowModel().flatRows.length > table.getCoreRowModel().rows.length
+  const grouped = table.getState().grouping.length > 0
   const treeColumnId = isTree
     ? table.getVisibleLeafColumns().find((column) => column.id !== SELECTION_COLUMN_ID)?.id
     : undefined
@@ -248,12 +252,14 @@ function TableContent<TData extends RowData>({
         aria-selected={selectable ? row.getIsSelected() : undefined}
         data-selected={(selectable && row.getIsSelected()) || undefined}
         data-depth={row.depth || undefined}
+        data-grouped={row.getIsGrouped() || undefined}
         data-stripe={index % 2 === 1 || undefined}
         data-index={index}
         ref={enableVirtualization ? virtualizer.measureElement : undefined}
         aria-rowindex={enableVirtualization ? headerRowCount + index + 1 : undefined}
         className={cx(
           'tably-tr',
+          row.getIsGrouped() && 'tably-group-row',
           clickable && 'tably-tr-clickable',
           classNames.tr,
           typeof rowClassName === 'function' ? rowClassName(row) : rowClassName,
@@ -265,15 +271,32 @@ function TableContent<TData extends RowData>({
       >
         {row.getVisibleCells().map((cell) => {
           const { cell: renderCell, className: cellClassName, align } = cell.column.columnDef
-          const content =
-            cell.column.id === EXPAND_COLUMN_ID ? (
-              <ExpandToggle row={row} controls={detailId(row)} />
-            ) : renderCell === undefined ? (
-              formatValue(cell.getValue())
-            ) : (
-              flexRender(renderCell, cell.getContext())
+          const isUtilityColumn = cell.column.id === EXPAND_COLUMN_ID || cell.column.id === SELECTION_COLUMN_ID
+          const renderValue = () =>
+            renderCell === undefined ? formatValue(cell.getValue()) : flexRender(renderCell, cell.getContext())
+          let content: ReactNode
+          if (cell.column.id === EXPAND_COLUMN_ID) {
+            content = <ExpandToggle row={row} controls={detailId(row)} />
+          } else if (cell.getIsGrouped()) {
+            content = (
+              <div className="tably-group-content">
+                <ExpandToggle row={row} />
+                {renderValue()}
+                <span className="tably-group-count">{text.groupRowCount(getDataLeafRows(row.subRows).length)}</span>
+              </div>
             )
-          const isTreeCell = cell.column.id === treeColumnId
+          } else if (cell.getIsAggregated()) {
+            const { aggregatedCell } = cell.column.columnDef
+            content =
+              aggregatedCell === undefined
+                ? formatValue(cell.getValue())
+                : flexRender(aggregatedCell, cell.getContext())
+          } else if (cell.getIsPlaceholder() || (row.getIsGrouped() && !isUtilityColumn)) {
+            content = null
+          } else {
+            content = renderValue()
+          }
+          const isTreeCell = cell.column.id === treeColumnId && !grouped
           const style = leafCellStyle(cell.column, fixedLayout)
           return (
             <td
@@ -452,6 +475,26 @@ function TableContent<TData extends RowData>({
           <tbody ref={tbodyRef} className={cx('tably-tbody', classNames.tbody)}>
             {renderBody()}
           </tbody>
+          {columns.some((column) => column.columnDef.footer !== undefined) && (
+            <tfoot className={cx('tably-tfoot', classNames.tfoot)}>
+              <tr>
+                {columns.map((column) => {
+                  const { footer, align } = column.columnDef
+                  return (
+                    <td
+                      key={column.id}
+                      className={cx('tably-tf', classNames.tf)}
+                      data-align={align}
+                      style={leafCellStyle(column, fixedLayout)}
+                      {...pinnedAttributes(column)}
+                    >
+                      {footer === undefined ? null : flexRender(footer, { table, column })}
+                    </td>
+                  )
+                })}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
       {options.enablePagination && (

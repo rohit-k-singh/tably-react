@@ -11,12 +11,17 @@ export interface RowInit<TData extends RowData> {
   subRows: Row<TData>[]
   /** Shared with copies of the row so accessor results are computed once. */
   valueCache?: Map<string, unknown>
+  /** For group rows. */
+  groupingColumnId?: string
+  groupingValue?: unknown
+  /** For group rows: their value for a column, instead of the accessor. */
+  getGroupValue?: (columnId: string) => unknown
 }
 
 type RowFields<TData extends RowData> = Pick<
   Row<TData>,
-  'id' | 'original' | 'index' | 'depth' | 'parentId' | 'subRows'
-> & { _valueCache?: Map<string, unknown> }
+  'id' | 'original' | 'index' | 'depth' | 'parentId' | 'subRows' | 'groupingColumnId' | 'groupingValue'
+> & { _valueCache?: Map<string, unknown>; _getGroupValue?: (columnId: string) => unknown }
 
 type RowApiFactory<TData extends RowData> = (table: TableInstance<TData>, row: Row<TData>) => object
 
@@ -25,6 +30,7 @@ function createValueRowApi<TData extends RowData>(table: TableInstance<TData>, r
   const fields = row as Row<TData> & RowFields<TData>
   return {
     getValue: <TValue>(columnId: string) => {
+      if (fields._getGroupValue) return fields._getGroupValue(columnId) as TValue
       const cache = (fields._valueCache ??= new Map())
       if (!cache.has(columnId)) {
         const column = table.getColumn(columnId)
@@ -46,7 +52,11 @@ function createCoreRowApi<TData extends RowData>(table: TableInstance<TData>, ro
       cellsByColumn ??= new Map(row.getCells().map((cell) => [cell.column.id, cell]))
       return table.getVisibleLeafColumns().map((column) => cellsByColumn!.get(column.id)!)
     },
-    getParentRow: () => (row.parentId === undefined ? undefined : table.getCoreRowModel().rowsById[row.parentId]),
+    getParentRow: () =>
+      row.parentId === undefined
+        ? undefined
+        : (table.getCoreRowModel().rowsById[row.parentId] ?? table.getGroupedRowModel().rowsById[row.parentId]),
+    getIsGrouped: () => row.groupingColumnId !== undefined,
     getParentRows: () => {
       const parents: Row<TData>[] = []
       for (let parent = row.getParentRow(); parent; parent = parent.getParentRow()) parents.unshift(parent)
@@ -105,6 +115,11 @@ export function createRow<TData extends RowData>(table: TableInstance<TData>, in
   row.parentId = init.parentId
   row.subRows = init.subRows
   if (init.valueCache) row._valueCache = init.valueCache
+  if (init.groupingColumnId !== undefined) {
+    row.groupingColumnId = init.groupingColumnId
+    row.groupingValue = init.groupingValue
+    row._getGroupValue = init.getGroupValue
+  }
   return row
 }
 
@@ -112,16 +127,21 @@ export function createRow<TData extends RowData>(table: TableInstance<TData>, in
 export function cloneRow<TData extends RowData>(
   table: TableInstance<TData>,
   row: Row<TData>,
-  subRows: Row<TData>[]
+  subRows: Row<TData>[],
+  overrides: { depth?: number; parentId?: string } = {}
 ): Row<TData> {
+  const fields = row as Row<TData> & RowFields<TData>
   return createRow(table, {
     id: row.id,
     original: row.original,
     index: row.index,
-    depth: row.depth,
-    parentId: row.parentId,
+    depth: overrides.depth ?? row.depth,
+    parentId: 'parentId' in overrides ? overrides.parentId : row.parentId,
     subRows,
-    valueCache: ((row as Row<TData> & RowFields<TData>)._valueCache ??= new Map())
+    valueCache: (fields._valueCache ??= new Map()),
+    groupingColumnId: row.groupingColumnId,
+    groupingValue: row.groupingValue,
+    getGroupValue: fields._getGroupValue
   })
 }
 
@@ -135,7 +155,11 @@ function createCell<TData extends RowData>(
     row,
     column,
     getValue: <TValue>() => row.getValue<TValue>(column.id),
-    getContext: () => ({ table, column, row, cell, getValue: cell.getValue })
+    getContext: () => ({ table, column, row, cell, getValue: cell.getValue }),
+    getIsGrouped: () => row.groupingColumnId === column.id,
+    getIsPlaceholder: () => column.getIsGrouped() && row.groupingColumnId !== column.id,
+    getIsAggregated: () =>
+      row.getIsGrouped() && row.groupingColumnId !== column.id && !!column.getAggregationFn()
   }
   return cell
 }
