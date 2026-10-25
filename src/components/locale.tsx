@@ -48,6 +48,9 @@ export interface TableLocaleText {
   resetWidth: string
   /** Accessible label of a column's resize handle. */
   resizeColumn: (columnLabel: string) => string
+  selectAllRows: string
+  selectPageRows: string
+  selectRow: string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -87,7 +90,10 @@ export const defaultLocaleText: TableLocaleText = {
   unpin: 'Unpin',
   hideColumn: 'Hide column',
   resetWidth: 'Reset width',
-  resizeColumn: (column) => `Resize ${column}`
+  resizeColumn: (column) => `Resize ${column}`,
+  selectAllRows: 'Select all rows',
+  selectPageRows: 'Select all rows on this page',
+  selectRow: 'Select row'
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

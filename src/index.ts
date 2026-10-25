@@ -1,5 +1,6 @@
 export { Table, Table as default } from './components/Table'
 export type { TableClassNames, TableProps } from './components/Table'
+export type { SelectAllScope } from './components/selectionColumn'
 export { TableLocaleProvider, defaultLocaleText } from './components/locale'
 export type { TableLocaleText } from './components/locale'
 export { TableSearch } from './components/TableSearch'
@@ -45,6 +46,13 @@ export type {
   SizingOptions,
   SizingTableState
 } from './core/features/sizing'
+export type {
+  RowSelectionState,
+  SelectionInstance,
+  SelectionOptions,
+  SelectionRow,
+  SelectionTableState
+} from './core/features/selection'
 export { filterFns } from './core/features/filtering'
 export type {
   BuiltInFilterFn,

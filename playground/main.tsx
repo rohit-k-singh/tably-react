@@ -162,7 +162,11 @@ function App() {
         enableColumnActions
         stickyHeader={sticky}
         maxHeight={sticky ? 420 : undefined}
-        initialState={{ pagination: { pageIndex: 0, pageSize: 10 }, columnPinning: { left: ['name'], right: ['actions'] } }}
+        enableRowSelection
+        initialState={{
+          pagination: { pageIndex: 0, pageSize: 10 },
+          columnPinning: { left: ['tably-select', 'name'], right: ['actions'] }
+        }}
         theme={theme}
         density={density}
         striped={striped}
@@ -175,6 +179,7 @@ function App() {
             <TableSearch table={table} />
             <TableColumnsMenu table={table} />
             <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
+              {table.getSelectedRowModel().rows.length > 0 && `${table.getSelectedRowModel().rows.length} selected · `}
               {table.getFilteredRowModel().rows.length} of {table.getCoreRowModel().rows.length} people
             </span>
           </>
