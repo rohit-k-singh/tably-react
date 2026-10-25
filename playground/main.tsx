@@ -1,6 +1,6 @@
 import { StrictMode, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Table, TableColumnsMenu, TableSearch, type ColumnDef, type TableProps } from '../src'
+import { Table, TableColumnsMenu, TableExportButton, TableSearch, type ColumnDef, type TableProps } from '../src'
 import '../src/styles.css'
 
 interface Person {
@@ -77,7 +77,12 @@ const columns: ColumnDef<Person>[] = [
   {
     header: 'Work',
     columns: [
-      { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
+      {
+        accessorKey: 'role',
+        header: 'Role',
+        filterVariant: 'multi-select',
+        cell: ({ getValue }) => <strong>{getValue()}</strong>
+      },
       { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
       {
         accessorKey: 'active',
@@ -88,7 +93,7 @@ const columns: ColumnDef<Person>[] = [
       }
     ]
   },
-  { accessorKey: 'address.city', header: 'City' },
+  { accessorKey: 'address.city', header: 'City', filterVariant: 'select' },
   {
     id: 'actions',
     header: '',
@@ -209,6 +214,7 @@ function App() {
         enableColumnDragging={dragging}
         enableColumnResizing={resizing}
         enableColumnActions
+        enableKeyboardNavigation
         stickyHeader={sticky}
         maxHeight={sticky || large ? 420 : undefined}
         enableRowSelection
@@ -226,6 +232,7 @@ function App() {
           <>
             <TableSearch table={table} />
             <TableColumnsMenu table={table} />
+            <TableExportButton table={table} filename="people.csv" />
             <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
               {table.getSelectedRowModel().rows.length > 0 && `${table.getSelectedRowModel().rows.length} selected · `}
               {table.getFilteredRowModel().rows.length} of {table.getCoreRowModel().rows.length} people

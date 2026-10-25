@@ -41,6 +41,13 @@ export interface FilteringColumnDef<TData extends RowData> {
    * values are strings or numbers are included.
    */
   enableGlobalFilter?: boolean
+  /**
+   * The control in the filter row. Defaults from the filter function: a text
+   * input, min / max inputs, date inputs or a boolean select. `'select'`
+   * lists the column's values (filtering with `weakEquals`) and
+   * `'multi-select'` lets users pick several (filtering with `inArray`).
+   */
+  filterVariant?: 'text' | 'select' | 'multi-select' | 'range' | 'date-range' | 'boolean'
 }
 
 export interface FilteringOptions<TData extends RowData> {
@@ -59,6 +66,13 @@ export interface FilteringOptions<TData extends RowData> {
 }
 
 export interface FilteringColumn<TData extends RowData> {
+  /**
+   * Distinct values of the column with their row counts, among the rows
+   * matching every other filter (so options narrow as other filters apply).
+   */
+  getFacetedUniqueValues: () => Map<unknown, number>
+  /** `[min, max]` of the column's numeric values among the rows matching every other filter. */
+  getFacetedMinMaxValues: () => [number, number] | undefined
   getCanFilter: () => boolean
   getCanGlobalFilter: () => boolean
   getFilterFn: () => FilterFn<TData>
@@ -196,7 +210,50 @@ export function createFilteringColumnApi<TData extends RowData>(
   const { columnDef } = column
   const filtersEnabled = () => table.options.enableFilters ?? true
 
+  // Rows matching every filter except this column's, for faceted values.
+  const getFacetedRowModel = memo(
+    () => [
+      table.getPreFilteredRowModel(),
+      table.getState().columnFilters,
+      table.getState().globalFilter,
+      table.options.manualFiltering
+    ],
+    (rowModel, columnFilters, globalFilter, manualFiltering) => {
+      const otherFilters = columnFilters.filter((filter) => filter.id !== column.id)
+      return manualFiltering ? rowModel : filterRowModel(table, rowModel, otherFilters, globalFilter)
+    }
+  )
+
+  const getFacetedUniqueValues = memo(
+    () => [getFacetedRowModel()],
+    (rowModel) => {
+      const counts = new Map<unknown, number>()
+      if (!column.accessorFn) return counts
+      for (const row of rowModel.flatRows) {
+        const value = row.getValue(column.id)
+        for (const item of Array.isArray(value) ? value : [value]) counts.set(item, (counts.get(item) ?? 0) + 1)
+      }
+      return counts
+    }
+  )
+
+  const getFacetedMinMaxValues = memo(
+    () => [getFacetedUniqueValues()],
+    (counts): [number, number] | undefined => {
+      let min = Number.POSITIVE_INFINITY
+      let max = Number.NEGATIVE_INFINITY
+      for (const value of counts.keys()) {
+        if (typeof value !== 'number' || Number.isNaN(value)) continue
+        if (value < min) min = value
+        if (value > max) max = value
+      }
+      return min <= max ? [min, max] : undefined
+    }
+  )
+
   const api: FilteringColumn<TData> = {
+    getFacetedUniqueValues,
+    getFacetedMinMaxValues,
     getCanFilter: () =>
       !!column.accessorFn &&
       (columnDef.enableColumnFilter ?? true) &&
@@ -213,6 +270,12 @@ export function createFilteringColumnApi<TData extends RowData>(
     getFilterFn: () => {
       const { filterFn: fn = 'auto' } = columnDef
       if (fn !== 'auto') return resolveFilterFn(fn)
+      if (columnDef.filterVariant === 'select') return filterFns.weakEquals
+      if (columnDef.filterVariant === 'multi-select') return filterFns.inArray
+      if (columnDef.filterVariant === 'range') return filterFns.inNumberRange
+      if (columnDef.filterVariant === 'date-range') return filterFns.inDateRange
+      if (columnDef.filterVariant === 'boolean') return filterFns.equals
+      if (columnDef.filterVariant === 'text') return filterFns.includesString
 
       const value = firstValue(table, column.id)
       if (typeof value === 'string') return filterFns.includesString

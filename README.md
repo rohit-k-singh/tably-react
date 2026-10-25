@@ -18,6 +18,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Row selection: checkboxes, select all (filtered rows or page), Shift-click ranges, single selection
 - Columns: multi-level header groups, show / hide and reorder (menu or drag and drop), resize, pin left / right,
   per-column actions menu, sticky header
+- Keyboard grid navigation (WAI-ARIA grid pattern), faceted filters (value lists with counts) and CSV export
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 > **Status: early release (0.x).** The API may still change between minor versions until 1.0.
@@ -185,6 +186,12 @@ filter function and a control from the column's values:
 | Dates | `inDateRange` (`[from, to]`, a date-only `to` includes the whole day) | From / to date inputs |
 | Booleans | `equals` | All / Yes / No select |
 | Arrays | `arrIncludes` | Text input |
+
+Choose another control with `filterVariant`: `'select'` lists the column's values with row counts, `'multi-select'`
+opens a checkbox list (filtering with `inArray`), and `'text'`, `'range'`, `'date-range'` or `'boolean'` force the
+default controls. Value lists and the min / max placeholders of number ranges come from faceting: the rows matching
+every filter except the column's own, so options narrow as other filters apply
+(`column.getFacetedUniqueValues()`, `column.getFacetedMinMaxValues()`).
 
 Other built-in functions: `includesStringSensitive`, `equalsString`, `weakEquals`, `arrIncludesAll`, `arrIncludesSome` and
 `inArray` (the value is one of the selected items). Empty filter values (`''`, `undefined`, `[]`, `[undefined, undefined]`)
@@ -483,6 +490,49 @@ For custom markup, `useVirtualizer({ count, estimateSize, getScrollElement, getI
 `items` to render, `paddingStart` / `paddingEnd` for spacer elements, `measureElement` (a ref callback for elements
 with a `data-index`) and `scrollToIndex(index, align)`.
 
+## Keyboard navigation
+
+```tsx
+<Table data={users} columns={columns} enableKeyboardNavigation />
+```
+
+The table becomes an ARIA grid with a single Tab stop:
+
+| Key | Action |
+| --- | --- |
+| Arrow keys | Move between header and body cells |
+| Home / End | First / last cell of the row |
+| Ctrl+Home / Ctrl+End | First header cell / last cell of the table |
+| PageUp / PageDown | Move by a screenful of rows |
+| Enter | Sort (header), focus the cell's control, or activate the row (`onRowClick` / `selectRowOnClick`) |
+| F2 | Focus the cell's control |
+| Escape | Return from a control to its cell |
+| Tab (inside a cell) | Cycle through the cell's controls |
+| Space | Toggle the row's selection |
+| ArrowRight / ArrowLeft | Expand / collapse tree and group rows (on the cell with the expand button) |
+| Alt+ArrowDown | Open the column actions menu (header) |
+
+Controls inside cells (including your own buttons and inputs) are taken out of the Tab order and reached with Enter or
+F2. With virtualization, moving to a row outside the view scrolls to it.
+
+## CSV export
+
+```tsx
+import { TableExportButton, getCsv, downloadCsv } from 'tably-react'
+
+<Table data={users} columns={columns} toolbar={(table) => <TableExportButton table={table} filename="users.csv" />} />
+```
+
+Exports the visible value columns in display order, and the rows matching the filters in sorted order
+(`rows: 'page'` for the current page, `'selected'` for selected rows). Values are quoted per RFC 4180, dates are
+written as ISO strings, and text starting with `=`, `+`, `-` or `@` is prefixed with `'` to prevent spreadsheet
+formula injection (`escapeFormulae: false` turns it off). The file starts with a byte order mark so Excel reads
+UTF-8 correctly.
+
+`getCsv(table, options)` returns the text (also works without React), and `downloadCsv(table, filename, options)`
+saves it. Options: `rows`, `columns`, `getValue(row, column)`, `getHeader(column)`, `delimiter`, `includeHeaders`
+and `escapeFormulae`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -491,7 +541,7 @@ with a `data-index`) and `scrollToIndex(index, align)`.
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection), [Expanding rows](#expanding-rows), [Grouping](#grouping-aggregation-and-footers) and [Virtualization](#virtualization). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection), [Expanding rows](#expanding-rows), [Grouping](#grouping-aggregation-and-footers), [Virtualization](#virtualization) and [Keyboard navigation](#keyboard-navigation). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
