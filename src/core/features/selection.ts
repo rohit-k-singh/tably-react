@@ -1,4 +1,4 @@
-import { createRowModel } from '../rows'
+import { createFlatRowModel } from '../rows'
 import { makeStateUpdater } from '../state'
 import type { Row, RowData, RowModel, TableInstance, Updater } from '../types'
 import { memo } from '../utils'
@@ -16,12 +16,18 @@ export interface SelectionOptions<TData extends RowData> {
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean)
   /** Allows selecting several rows; otherwise selecting a row deselects the others. Defaults to `true`. */
   enableMultiRowSelection?: boolean
+  /** Selecting a row also selects its sub rows. Defaults to `true`. */
+  enableSubRowSelection?: boolean
 }
 
 export interface SelectionRow {
   getCanSelect: () => boolean
   getIsSelected: () => boolean
-  /** Selects or deselects the row. Toggles without an argument. */
+  /** Whether some, but not all, of the row's selectable sub rows are selected. */
+  getIsSomeSelected: () => boolean
+  /** Whether the row has selectable sub rows and all of them are selected. */
+  getIsAllSubRowsSelected: () => boolean
+  /** Selects or deselects the row (and its sub rows, see `enableSubRowSelection`). Toggles without an argument. */
   toggleSelected: (selected?: boolean) => void
 }
 
@@ -42,7 +48,7 @@ export interface SelectionInstance<TData extends RowData> {
    * order of `rows` (the rendered rows by default), e.g. for Shift-click.
    */
   setRowRangeSelected: (fromRowId: string, toRowId: string, selected: boolean, rows?: Row<TData>[]) => void
-  /** Selected rows, in data order, including rows hidden by filters or pagination. */
+  /** Selected rows (and sub rows) in data order, as a flat list, including rows hidden by filters or pagination. */
   getSelectedRowModel: () => RowModel<TData>
   /** Selected rows matching the current filters. */
   getFilteredSelectedRowModel: () => RowModel<TData>
@@ -58,15 +64,31 @@ export function createSelectionRowApi<TData extends RowData>(
       return typeof enableRowSelection === 'function' ? enableRowSelection(row) : enableRowSelection
     },
     getIsSelected: () => !!table.getState().rowSelection[row.id],
+    getIsSomeSelected: () => {
+      const leaves = row.getLeafRows().filter((leaf) => leaf.getCanSelect())
+      const selected = leaves.filter((leaf) => leaf.getIsSelected()).length
+      return selected > 0 && selected < leaves.length
+    },
+    getIsAllSubRowsSelected: () => {
+      const leaves = row.getLeafRows().filter((leaf) => leaf.getCanSelect())
+      return leaves.length > 0 && leaves.every((leaf) => leaf.getIsSelected())
+    },
     toggleSelected: (selected) => {
       const next = selected ?? !api.getIsSelected()
       if (next && !api.getCanSelect()) return
+      const multi = table.options.enableMultiRowSelection ?? true
+      const withSubRows = multi && (table.options.enableSubRowSelection ?? true)
+      const rows = withSubRows ? [row, ...row.getLeafRows()] : [row]
+
       table.setRowSelection((previous) => {
-        if (next && !(table.options.enableMultiRowSelection ?? true)) return { [row.id]: true }
-        if (!!previous[row.id] === next) return previous
-        if (next) return { ...previous, [row.id]: true }
-        const { [row.id]: _removed, ...rest } = previous
-        return rest
+        if (next && !multi) return { [row.id]: true }
+        if (rows.every((r) => !!previous[r.id] === (next && r.getCanSelect()))) return previous
+        const updated = { ...previous }
+        for (const r of rows) {
+          if (next && r.getCanSelect()) updated[r.id] = true
+          else delete updated[r.id]
+        }
+        return updated
       })
     }
   }
@@ -93,7 +115,7 @@ export function createSelectionTableApi<TData extends RowData>(
 ): SelectionInstance<TData> {
   const update = makeStateUpdater(table, 'rowSelection')
   const selectable = (rows: Row<TData>[]) => rows.filter((row) => row.getCanSelect())
-  const allRows = () => table.getFilteredRowModel().rows
+  const allRows = () => table.getFilteredRowModel().flatRows
   const pageRows = () => table.getRowModel().rows
 
   const isAll = (rows: Row<TData>[]) => {
@@ -104,8 +126,8 @@ export function createSelectionTableApi<TData extends RowData>(
 
   const selectedModel = (rowModel: RowModel<TData>, rowSelection: RowSelectionState) =>
     Object.keys(rowSelection).length === 0
-      ? createRowModel<TData>([])
-      : createRowModel(rowModel.rows.filter((row) => rowSelection[row.id]))
+      ? createFlatRowModel<TData>([])
+      : createFlatRowModel(rowModel.flatRows.filter((row) => rowSelection[row.id]))
 
   const api: SelectionInstance<TData> = {
     setRowSelection: (updater) => {

@@ -35,6 +35,7 @@
   --_t-stripe-bg: var(--tably-stripe-bg, #f9fafb);
   --_t-selected-bg: var(--tably-selected-bg, #eff6ff);
   --_t-accent-color: var(--tably-accent-color, #2563eb);
+  --_t-indent: var(--tably-indent, 1.25rem);
 
   position: relative;
   border: 1px solid var(--_t-border-color);
@@ -613,6 +614,55 @@
 
 :where(.tably-select-cell) {
   padding-inline: 0.5rem;
+}
+
+/* Expanding */
+:where(.tably-tree-cell) {
+  padding-inline-start: calc(var(--_t-cell-padding-x) + var(--tably-depth, 0) * var(--_t-indent));
+}
+
+:where(.tably-tree-content) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+:where(.tably-expand-button, .tably-expand-spacer) {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+:where(.tably-expand-spacer) {
+  display: inline-block;
+}
+
+:where(.tably-chevron) {
+  transition: transform 0.15s ease;
+}
+
+:where(.tably-expand-button[aria-expanded='true'] .tably-chevron) {
+  transform: rotate(90deg);
+}
+
+:where([dir='rtl'] .tably-expand-button[aria-expanded='false'] .tably-chevron) {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.tably-chevron) {
+    transition: none;
+  }
+}
+
+:where(.tably-expand-cell) {
+  padding-inline: 0.5rem;
+}
+
+:where(.tably-detail-cell) {
+  padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
+  background: var(--_t-stripe-bg);
+  border-bottom: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-caption) {

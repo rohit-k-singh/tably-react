@@ -1,6 +1,6 @@
+import { cloneRow, createRowModel } from '../rows'
 import { makeStateUpdater } from '../state'
 import type { Column, Row, RowData, RowModel, TableInstance, Updater } from '../types'
-import { createRowModel } from '../rows'
 import { memo } from '../utils'
 
 export type SortDirection = 'asc' | 'desc'
@@ -252,7 +252,23 @@ function sortRowModel<TData extends RowData>(
     ]
   })
   if (sorters.length === 0) return createRowModel(rows)
+  return createRowModel(sortRows(table, rows, sorters))
+}
 
+type Sorter<TData extends RowData> = {
+  id: string
+  desc: boolean
+  invert: boolean
+  sortUndefined: 'first' | 'last' | false
+  sortingFn: SortingFn<TData>
+}
+
+/** Sorts one level of rows, then the sub rows of each row. */
+function sortRows<TData extends RowData>(
+  table: TableInstance<TData>,
+  rows: Row<TData>[],
+  sorters: Sorter<TData>[]
+): Row<TData>[] {
   // Read each sorted column once per row up front, instead of in every comparison.
   const prepared = sorters.map((sorter) => {
     const values = rows.map((row) => row.getValue(sorter.id))
@@ -288,6 +304,8 @@ function sortRowModel<TData extends RowData>(
     return rows[a].index - rows[b].index
   })
 
-  const sorted = order.map((index) => rows[index])
-  return createRowModel(sorted)
+  return order.map((index) => {
+    const row = rows[index]
+    return row.subRows.length > 0 ? cloneRow(table, row, sortRows(table, row.subRows, sorters)) : row
+  })
 }

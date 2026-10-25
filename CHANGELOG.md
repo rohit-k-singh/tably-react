@@ -12,6 +12,9 @@
 - The table now uses `border-collapse: separate` so borders stay attached to sticky cells.
 - Row selection (`enableRowSelection`): checkbox column, select all (filtered rows or page) with an indeterminate
   state, Shift-click ranges, single selection, `selectRowOnClick`, and selected row models.
+- Expanding rows: tree data (`getSubRows`) with per-level sorting, ancestor-preserving filtering and sub row selection,
+  and detail panels (`renderDetailPanel`). Row models now have `flatRows`, and rows have `depth`, `parentId`,
+  `subRows`, `getParentRow`, `getParentRows` and `getLeafRows`.
 
 ## 0.0.1
 

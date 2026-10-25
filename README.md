@@ -12,6 +12,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
+- Expanding rows: tree data with indentation, or detail panels under rows
 - Row selection: checkboxes, select all (filtered rows or page), Shift-click ranges, single selection
 - Columns: multi-level header groups, show / hide and reorder (menu or drag and drop), resize, pin left / right,
   per-column actions menu, sticky header
@@ -369,6 +370,44 @@ In code: `row.toggleSelected(selected?)`, `row.getIsSelected()`, `row.getCanSele
 `table.getSelectedRowModel()` (all selected rows), `table.getFilteredSelectedRowModel()` and
 `table.resetRowSelection()`.
 
+## Expanding rows
+
+**Tree data**: return each row's children from `getSubRows`. The first data column gets expand buttons, indented by
+depth, and its header an "expand all" button.
+
+```tsx
+<Table data={folders} columns={columns} getSubRows={(folder) => folder.children} />
+```
+
+- Sorting sorts every level. Filtering keeps a row when it matches or when any of its descendants does, so matches
+  appear with their ancestors.
+- Pagination pages through top-level rows; expanded sub rows are shown with their parent.
+- Selecting a parent selects its sub rows (`enableSubRowSelection={false}` turns that off); a partially selected
+  parent's checkbox is indeterminate.
+- Sub row ids default to `${parentId}.${index}`; `getRowId(row, index, parent)` receives the parent row.
+
+**Detail panels**: `renderDetailPanel` adds an expand button column, and shows its content in a full-width row under
+each expanded row.
+
+```tsx
+<Table data={orders} columns={columns} renderDetailPanel={(row) => <OrderLines order={row.original} />} />
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `getSubRows` | | `(originalRow, index) => children`, for tree data. |
+| `renderDetailPanel` | | `(row) => content` under expanded rows (`<Table>` only). |
+| `getRowCanExpand` | rows with sub rows (all rows with `renderDetailPanel`) | `(row) => boolean`. |
+| `enableExpanding` | `true` | Allow expanding. |
+| `initialState.expanded`, `state.expanded` + `onExpandedChange` | `{}` | `true` for all rows, or expanded row ids, e.g. `{ '0': true }`. |
+| `manualExpanding` | `false` | Rows are expanded elsewhere; only the state is tracked. |
+| `enableSubRowSelection` | `true` | Selecting a row also selects its sub rows. |
+
+In code: `row.toggleExpanded(expanded?)`, `row.getIsExpanded()`, `row.getCanExpand()`, `row.subRows`, `row.depth`,
+`row.getParentRow()`, `row.getLeafRows()`, `table.toggleAllRowsExpanded()`, `table.getIsAllRowsExpanded()` and
+`table.resetExpanded()`. Row models have `rows` (top level) and `flatRows` (every row); `table.getRowModel().rows`
+is the flat list of rows to render.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -377,7 +416,7 @@ In code: `row.toggleSelected(selected?)`, `row.getIsSelected()`, `row.getCanSele
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header) and [Row selection](#row-selection). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection) and [Expanding rows](#expanding-rows). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -517,12 +556,14 @@ With Tailwind, use `classNames` (and skip the stylesheet if you style everything
 | `--tably-stripe-bg` | Background of alternate rows with `striped` |
 | `--tably-selected-bg` | Background of selected rows |
 | `--tably-accent-color` | Checkbox color |
+| `--tably-indent` | Indentation per tree level (default `1.25rem`) |
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
 `tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
 `tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
 `tably-menu`, `tably-button`, `tably-icon-button`, `tably-th-content`, `tably-column-actions`, `tably-resize-handle`,
-`tably-popover`, `[data-pinned]`, `tably-checkbox`, `tably-select-cell`, `[data-selected]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-popover`, `[data-pinned]`, `tably-checkbox`, `tably-select-cell`, `[data-selected]`, `tably-tree-cell`, `tably-expand-button`, `tably-expand-cell`,
+`tably-detail-row`, `tably-detail-cell`, `[data-depth]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

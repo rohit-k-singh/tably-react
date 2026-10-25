@@ -51,6 +51,10 @@ export interface TableLocaleText {
   selectAllRows: string
   selectPageRows: string
   selectRow: string
+  expandRow: string
+  collapseRow: string
+  expandAllRows: string
+  collapseAllRows: string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -93,7 +97,11 @@ export const defaultLocaleText: TableLocaleText = {
   resizeColumn: (column) => `Resize ${column}`,
   selectAllRows: 'Select all rows',
   selectPageRows: 'Select all rows on this page',
-  selectRow: 'Select row'
+  selectRow: 'Select row',
+  expandRow: 'Expand row',
+  collapseRow: 'Collapse row',
+  expandAllRows: 'Expand all rows',
+  collapseAllRows: 'Collapse all rows'
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

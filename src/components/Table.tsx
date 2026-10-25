@@ -1,5 +1,5 @@
-import { useMemo, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import type { Row, RowData, TableInstance, TableOptions } from '../core/types'
+import { Fragment, useId, useMemo, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import type { DisplayColumnDef, Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
 import { ColumnFilter } from './ColumnFilter'
@@ -8,7 +8,8 @@ import { headerStyle, leafCellStyle, pinnedAttributes } from './cellStyle'
 import { formatValue } from './formatValue'
 import { HeaderCell } from './HeaderCell'
 import { TableLocaleProvider, useLocaleText, type TableLocaleText } from './locale'
-import { createSelectionColumn, type SelectAllScope } from './selectionColumn'
+import { ExpandAllToggle, ExpandToggle } from './ExpandToggle'
+import { createSelectionColumn, SELECTION_COLUMN_ID, type SelectAllScope } from './selectionColumn'
 import { TablePagination } from './TablePagination'
 
 /** Class names added to each part of the table, e.g. for Tailwind. */
@@ -92,6 +93,11 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   hideSelectionColumn?: boolean
   /** Toggles a row's selection when it is clicked. */
   selectRowOnClick?: boolean
+  /**
+   * Content shown under an expanded row, e.g. details or a nested table.
+   * Adds an expand button column; every row can expand unless `getRowCanExpand` says otherwise.
+   */
+  renderDetailPanel?: (row: Row<TData>) => ReactNode
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -133,18 +139,33 @@ function TableContent<TData extends RowData>({
   selectAllScope = 'all',
   hideSelectionColumn = false,
   selectRowOnClick = false,
+  renderDetailPanel,
   'aria-label': ariaLabel,
   ...tableOptions
 }: Omit<TableProps<TData>, 'localeText'>) {
   const selectable = !!tableOptions.enableRowSelection
   const showSelectionColumn = selectable && !hideSelectionColumn
+  const hasDetailPanel = renderDetailPanel !== undefined
   const columnDefs = useMemo(
-    () =>
-      showSelectionColumn ? [createSelectionColumn<TData>(selectAllScope), ...tableOptions.columns] : tableOptions.columns,
-    [tableOptions.columns, showSelectionColumn, selectAllScope]
+    () => [
+      ...(showSelectionColumn ? [createSelectionColumn<TData>(selectAllScope)] : []),
+      ...(hasDetailPanel ? [createExpandColumn<TData>()] : []),
+      ...tableOptions.columns
+    ],
+    [tableOptions.columns, showSelectionColumn, selectAllScope, hasDetailPanel]
   )
-  const options = { ...tableOptions, columns: columnDefs }
+  const options = {
+    ...tableOptions,
+    columns: columnDefs,
+    getRowCanExpand: tableOptions.getRowCanExpand ?? (hasDetailPanel ? () => true : undefined)
+  }
   const table = useTable(options)
+  const detailIdPrefix = useId()
+  // Tree data: the first data column shows the expand buttons, indented by depth.
+  const isTree = table.getCoreRowModel().flatRows.length > table.getCoreRowModel().rows.length
+  const treeColumnId = isTree
+    ? table.getVisibleLeafColumns().find((column) => column.id !== SELECTION_COLUMN_ID)?.id
+    : undefined
   const text = useLocaleText()
   const columns = table.getVisibleLeafColumns()
   const { rows } = table.getRowModel()
@@ -186,6 +207,7 @@ function TableContent<TData extends RowData>({
         {...rowProps}
         aria-selected={selectable ? row.getIsSelected() : undefined}
         data-selected={(selectable && row.getIsSelected()) || undefined}
+        data-depth={row.depth || undefined}
         className={cx(
           'tably-tr',
           clickable && 'tably-tr-clickable',
@@ -199,23 +221,54 @@ function TableContent<TData extends RowData>({
       >
         {row.getVisibleCells().map((cell) => {
           const { cell: renderCell, className: cellClassName, align } = cell.column.columnDef
+          const content =
+            cell.column.id === EXPAND_COLUMN_ID ? (
+              <ExpandToggle row={row} controls={detailId(row)} />
+            ) : renderCell === undefined ? (
+              formatValue(cell.getValue())
+            ) : (
+              flexRender(renderCell, cell.getContext())
+            )
+          const isTreeCell = cell.column.id === treeColumnId
+          const style = leafCellStyle(cell.column, fixedLayout)
           return (
             <td
               key={cell.id}
-              className={cx('tably-td', classNames.td, cellClassName)}
+              className={cx('tably-td', isTreeCell && 'tably-tree-cell', classNames.td, cellClassName)}
               data-align={align}
-              style={leafCellStyle(cell.column, fixedLayout)}
+              style={isTreeCell ? { ...style, ['--tably-depth' as string]: row.depth } : style}
               {...pinnedAttributes(cell.column)}
             >
-              {renderCell === undefined
-                ? formatValue(cell.getValue())
-                : flexRender(renderCell, cell.getContext())}
+              {isTreeCell ? (
+                <div className="tably-tree-content">
+                  <ExpandToggle row={row} />
+                  {content}
+                </div>
+              ) : (
+                content
+              )}
             </td>
           )
         })}
       </tr>
     )
   }
+
+  const detailId = (row: Row<TData>) => `${detailIdPrefix}${row.id}-detail`
+
+  // Always a keyed fragment, so expanding a row does not remount it (and its focused toggle).
+  const renderRowWithDetail = (row: Row<TData>) => (
+    <Fragment key={row.id}>
+      {renderRow(row)}
+      {hasDetailPanel && row.getIsExpanded() && (
+        <tr className="tably-detail-row" id={detailId(row)}>
+          <td colSpan={columns.length} className="tably-detail-cell">
+            {renderDetailPanel(row)}
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  )
 
   const renderBody = () => {
     if (loading) {
@@ -231,7 +284,7 @@ function TableContent<TData extends RowData>({
         ? renderMessage(cx('tably-empty tably-no-results', classNames.empty), noResultsMessage ?? text.noResults)
         : renderMessage(cx('tably-empty', classNames.empty), emptyMessage ?? text.empty)
     }
-    return rows.map(renderRow)
+    return rows.map(renderRowWithDetail)
   }
 
   return (
@@ -275,6 +328,15 @@ function TableContent<TData extends RowData>({
                     className={classNames.th}
                     style={headerStyle(header, fixedLayout)}
                     showActions={enableColumnActions}
+                    leading={
+                      (header.column.id === EXPAND_COLUMN_ID || header.column.id === treeColumnId) &&
+                      table.getCanSomeRowsExpand() ? (
+                        <ExpandAllToggle
+                          expanded={table.getIsAllRowsExpanded()}
+                          onToggle={() => table.toggleAllRowsExpanded()}
+                        />
+                      ) : undefined
+                    }
                     dragging={
                       enableColumnDragging && header.column.columns.length === 0
                         ? {
@@ -324,6 +386,21 @@ function TableContent<TData extends RowData>({
       )}
     </div>
   )
+}
+
+const EXPAND_COLUMN_ID = 'tably-expand'
+
+function createExpandColumn<TData extends RowData>(): DisplayColumnDef<TData> {
+  return {
+    id: EXPAND_COLUMN_ID,
+    header: '',
+    enableHiding: false,
+    enableResizing: false,
+    width: 44,
+    align: 'center',
+    className: 'tably-expand-cell',
+    headerClassName: 'tably-expand-cell'
+  }
 }
 
 export default Table
