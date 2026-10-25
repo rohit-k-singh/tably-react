@@ -1,0 +1,22 @@
+# Changelog
+
+## 0.0.1
+
+First release of the rewritten package. Versioning restarts at 0.x, so the API may still change between minor
+versions; the 1.0.x releases were an early prototype (see "Migrating from the 1.0.x prototype" in the README).
+
+### Features
+
+- Headless engine (`createTable`, `useTable`) and a ready-made `<Table>` component, with no runtime dependencies.
+- Typed column definitions: `accessorKey` with type-checked nested paths, `accessorFn`, display columns,
+  `createColumnHelper`, typed `ColumnMeta`.
+- Sorting: multi-column, natural string order, built-in and custom sorting functions, server-side mode.
+- Filtering: global search, column filters with built-in controls, built-in and custom filter functions,
+  server-side mode.
+- Pagination: client and server-side, page size select, automatic reset to the first page.
+- Every state slice can be controlled (`state` + `on*Change`) or left to the table (`initialState`).
+- Default stylesheet with light, dark and auto themes, three densities, striped, hover and bordered rows, all
+  adjustable with CSS variables; zero-specificity selectors.
+- `classNames` slots, `rowClassName`, `getRowProps`, column `align` and widths.
+- Translatable texts (`localeText`, `TableLocaleProvider`).
+- React 18 and 19, ESM and CommonJS, server rendering and React Server Components (`'use client'`).

@@ -1,6 +1,6 @@
 {
   "name": "tably-react",
-  "version": "1.0.5",
+  "version": "0.0.1",
   "description": "A customizable, dependency-free React table component written in TypeScript",
   "type": "module",
   "main": "./dist/index.cjs",
