@@ -537,6 +537,8 @@ function TableContent<TData extends RowData>({
       <div
         ref={scrollRef}
         className={cx('tably-scroll', classNames.scroll)}
+        // Firefox makes scrollable elements Tab stops; in grid mode, cell navigation scrolls instead.
+        tabIndex={enableKeyboardNavigation ? -1 : undefined}
         style={scrollHeight === undefined ? undefined : { maxHeight: scrollHeight }}
       >
         <table

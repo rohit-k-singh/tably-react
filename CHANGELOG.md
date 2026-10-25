@@ -1,28 +1,4 @@
-# Changelog
-
-## Unreleased
-
-- Column groups with multi-level headers (`columns` in a column definition).
-- Column visibility and ordering state, `TableColumnsMenu`, and drag-and-drop header reordering
-  (`enableColumnDragging`).
-- `table.getAllColumns()` now returns top-level columns; use `getAllLeafColumns()` or `getVisibleLeafColumns()`
-  for the flat list, `getHeaderGroups()` for header rows and `row.getVisibleCells()` for cells.
-- Column resizing (`enableColumnResizing`) with pointer and keyboard handles, column pinning, a column actions menu
-  (`enableColumnActions`) and a sticky header (`stickyHeader` + `maxHeight`).
-- The table now uses `border-collapse: separate` so borders stay attached to sticky cells.
-- Row selection (`enableRowSelection`): checkbox column, select all (filtered rows or page) with an indeterminate
-  state, Shift-click ranges, single selection, `selectRowOnClick`, and selected row models.
-- Expanding rows: tree data (`getSubRows`) with per-level sorting, ancestor-preserving filtering and sub row selection,
-  and detail panels (`renderDetailPanel`). Row models now have `flatRows`, and rows have `depth`, `parentId`,
-  `subRows`, `getParentRow`, `getParentRows` and `getLeafRows`.
-- Grouping by one or more columns with aggregation (`aggregationFn`, `aggregatedCell`), grouping from the column
-  actions menu, column footers (`footer`) and `column.getAggregatedValue()`.
-- Row virtualization (`enableVirtualization`) with measured row heights, and the `useVirtualizer` hook.
-- Keyboard grid navigation (`enableKeyboardNavigation`), faceted values (`getFacetedUniqueValues`,
-  `getFacetedMinMaxValues`) with `filterVariant` select / multi-select controls, and CSV export (`getCsv`,
-  `downloadCsv`, `TableExportButton`).
-- Striped rows now use a `data-stripe` attribute instead of `:nth-child(even)`, so stripes follow the data order
-  with detail rows and virtualization.
+# tably-react
 
 ## 0.0.1
 
@@ -44,3 +20,21 @@ versions; the 1.0.x releases were an early prototype (see "Migrating from the 1.
 - `classNames` slots, `rowClassName`, `getRowProps`, column `align` and widths.
 - Translatable texts (`localeText`, `TableLocaleProvider`).
 - React 18 and 19, ESM and CommonJS, server rendering and React Server Components (`'use client'`).
+- Column groups with multi-level headers (`columns` in a column definition), `getHeaderGroups()` and
+  `row.getVisibleCells()` for custom markup.
+- Column visibility and ordering state, `TableColumnsMenu`, and drag-and-drop header reordering
+  (`enableColumnDragging`).
+- Column resizing (`enableColumnResizing`) with pointer and keyboard handles, column pinning, a column actions menu
+  (`enableColumnActions`) and a sticky header (`stickyHeader` + `maxHeight`).
+- Row selection (`enableRowSelection`): checkbox column, select all (filtered rows or page) with an indeterminate
+  state, Shift-click ranges, single selection, `selectRowOnClick`, and selected row models.
+- Expanding rows: tree data (`getSubRows`) with per-level sorting, ancestor-preserving filtering and sub row selection,
+  and detail panels (`renderDetailPanel`).
+- Grouping by one or more columns with aggregation (`aggregationFn`, `aggregatedCell`), grouping from the column
+  actions menu, column footers (`footer`) and `column.getAggregatedValue()`.
+- Row virtualization (`enableVirtualization`) with measured row heights, and the `useVirtualizer` hook.
+- Keyboard grid navigation (`enableKeyboardNavigation`), faceted values (`getFacetedUniqueValues`,
+  `getFacetedMinMaxValues`) with `filterVariant` select / multi-select controls, and CSV export (`getCsv`,
+  `downloadCsv`, `TableExportButton`).
+- End-to-end tests in Chromium, Firefox and WebKit with axe accessibility checks, a bundle size budget, and a
+  changesets-based release workflow publishing with npm provenance.
