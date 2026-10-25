@@ -3,42 +3,96 @@
  *
  * Every rule uses :where() so its specificity is zero: any class you add
  * (plain CSS, CSS modules, Tailwind utilities, ...) overrides it.
- * Adjust the look globally by overriding the --tably-* variables, e.g.
+ * Adjust the look by setting --tably-* variables on the table or any
+ * ancestor, e.g.
  *
- *   .my-table { --tably-header-bg: #111827; --tably-header-color: #fff; }
+ *   :root { --tably-header-bg: #111827; --tably-header-color: #fff; }
  */
 
 :where(.tably-container) {
-  --tably-font-family: inherit;
-  --tably-font-size: 0.875rem;
-  --tably-color: #111827;
-  --tably-bg: #ffffff;
-  --tably-border-color: #e5e7eb;
-  --tably-radius: 0.5rem;
-  --tably-header-bg: #f9fafb;
-  --tably-header-color: #374151;
-  --tably-header-font-weight: 600;
-  --tably-cell-padding-y: 0.75rem;
-  --tably-cell-padding-x: 1rem;
-  --tably-row-hover-bg: #f3f4f6;
-  --tably-focus-ring: 2px solid #2563eb;
-  --tably-muted-color: #6b7280;
-  --tably-spinner-color: #2563eb;
-  --tably-spinner-size: 1.5rem;
-  --tably-sort-indicator-color: #d1d5db;
-  --tably-sort-indicator-active-color: #111827;
-  --tably-input-bg: #ffffff;
-  --tably-input-border-color: #d1d5db;
-  --tably-input-radius: 0.375rem;
+  /* Each --_t-* value reads the public --tably-* variable when set (on the
+     container or any ancestor) and falls back to the theme default. */
+  --_t-font-size: var(--tably-font-size, 0.875rem);
+  --_t-color: var(--tably-color, #111827);
+  --_t-bg: var(--tably-bg, #ffffff);
+  --_t-border-color: var(--tably-border-color, #e5e7eb);
+  --_t-radius: var(--tably-radius, 0.5rem);
+  --_t-header-bg: var(--tably-header-bg, #f9fafb);
+  --_t-header-color: var(--tably-header-color, #374151);
+  --_t-header-font-weight: var(--tably-header-font-weight, 600);
+  --_t-cell-padding-y: var(--tably-cell-padding-y, 0.75rem);
+  --_t-cell-padding-x: var(--tably-cell-padding-x, 1rem);
+  --_t-row-hover-bg: var(--tably-row-hover-bg, #f3f4f6);
+  --_t-focus-ring: var(--tably-focus-ring, 2px solid #2563eb);
+  --_t-muted-color: var(--tably-muted-color, #6b7280);
+  --_t-spinner-color: var(--tably-spinner-color, #2563eb);
+  --_t-spinner-size: var(--tably-spinner-size, 1.5rem);
+  --_t-sort-indicator-color: var(--tably-sort-indicator-color, #d1d5db);
+  --_t-sort-indicator-active-color: var(--tably-sort-indicator-active-color, #111827);
+  --_t-input-bg: var(--tably-input-bg, #ffffff);
+  --_t-input-border-color: var(--tably-input-border-color, #d1d5db);
+  --_t-input-radius: var(--tably-input-radius, 0.375rem);
+  --_t-stripe-bg: var(--tably-stripe-bg, #f9fafb);
 
   overflow: hidden;
   overflow: clip;
-  border: 1px solid var(--tably-border-color);
-  border-radius: var(--tably-radius);
-  background: var(--tably-bg);
-  color: var(--tably-color);
+  border: 1px solid var(--_t-border-color);
+  border-radius: var(--_t-radius);
+  background: var(--_t-bg);
+  color: var(--_t-color);
+  /* Inherits the page font unless --tably-font-family is set. */
   font-family: var(--tably-font-family);
-  font-size: var(--tably-font-size);
+  font-size: var(--_t-font-size);
+}
+
+/* Dark theme: <Table theme="dark">, theme="auto" with a dark OS setting, or any ancestor with data-tably-theme="dark". */
+:where(.tably-container[data-theme='dark'], [data-tably-theme='dark'] .tably-container:not([data-theme='light'])) {
+  color-scheme: dark;
+  --_t-color: var(--tably-color, #e5e7eb);
+  --_t-bg: var(--tably-bg, #111827);
+  --_t-border-color: var(--tably-border-color, #374151);
+  --_t-header-bg: var(--tably-header-bg, #1f2937);
+  --_t-header-color: var(--tably-header-color, #d1d5db);
+  --_t-row-hover-bg: var(--tably-row-hover-bg, #1f2937);
+  --_t-focus-ring: var(--tably-focus-ring, 2px solid #60a5fa);
+  --_t-muted-color: var(--tably-muted-color, #9ca3af);
+  --_t-spinner-color: var(--tably-spinner-color, #60a5fa);
+  --_t-sort-indicator-color: var(--tably-sort-indicator-color, #4b5563);
+  --_t-sort-indicator-active-color: var(--tably-sort-indicator-active-color, #f9fafb);
+  --_t-input-bg: var(--tably-input-bg, #0b1220);
+  --_t-input-border-color: var(--tably-input-border-color, #4b5563);
+  --_t-stripe-bg: var(--tably-stripe-bg, #172033);
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(.tably-container[data-theme='auto']) {
+    color-scheme: dark;
+    --_t-color: var(--tably-color, #e5e7eb);
+    --_t-bg: var(--tably-bg, #111827);
+    --_t-border-color: var(--tably-border-color, #374151);
+    --_t-header-bg: var(--tably-header-bg, #1f2937);
+    --_t-header-color: var(--tably-header-color, #d1d5db);
+    --_t-row-hover-bg: var(--tably-row-hover-bg, #1f2937);
+    --_t-focus-ring: var(--tably-focus-ring, 2px solid #60a5fa);
+    --_t-muted-color: var(--tably-muted-color, #9ca3af);
+    --_t-spinner-color: var(--tably-spinner-color, #60a5fa);
+    --_t-sort-indicator-color: var(--tably-sort-indicator-color, #4b5563);
+    --_t-sort-indicator-active-color: var(--tably-sort-indicator-active-color, #f9fafb);
+    --_t-input-bg: var(--tably-input-bg, #0b1220);
+    --_t-input-border-color: var(--tably-input-border-color, #4b5563);
+    --_t-stripe-bg: var(--tably-stripe-bg, #172033);
+  }
+}
+
+/* Density: <Table density="compact" | "comfortable"> */
+:where(.tably-container[data-density='compact']) {
+  --_t-cell-padding-y: var(--tably-cell-padding-y, 0.375rem);
+  --_t-cell-padding-x: var(--tably-cell-padding-x, 0.75rem);
+}
+
+:where(.tably-container[data-density='comfortable']) {
+  --_t-cell-padding-y: var(--tably-cell-padding-y, 1rem);
+  --_t-cell-padding-x: var(--tably-cell-padding-x, 1.25rem);
 }
 
 :where(.tably-scroll) {
@@ -50,23 +104,27 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  padding: var(--tably-cell-padding-y) var(--tably-cell-padding-x);
-  border-bottom: 1px solid var(--tably-border-color);
+  padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
+  border-bottom: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-input) {
   box-sizing: border-box;
   min-width: 0;
   padding: 0.375rem 0.625rem;
-  border: 1px solid var(--tably-input-border-color);
-  border-radius: var(--tably-input-radius);
-  background: var(--tably-input-bg);
+  border: 1px solid var(--_t-input-border-color);
+  border-radius: var(--_t-input-radius);
+  background: var(--_t-input-bg);
   color: inherit;
   font: inherit;
 }
 
+:where(.tably-input::placeholder) {
+  color: var(--_t-muted-color);
+}
+
 :where(.tably-input:focus-visible) {
-  outline: var(--tably-focus-ring);
+  outline: var(--_t-focus-ring);
   outline-offset: -1px;
 }
 
@@ -75,9 +133,9 @@
 }
 
 :where(.tably-filter-cell) {
-  padding: 0.5rem var(--tably-cell-padding-x);
-  background: var(--tably-header-bg);
-  border-bottom: 1px solid var(--tably-border-color);
+  padding: 0.5rem var(--_t-cell-padding-x);
+  background: var(--_t-header-bg);
+  border-bottom: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-filter-input, .tably-filter-select) {
@@ -96,8 +154,8 @@
 }
 
 :where(.tably-footer) {
-  padding: 0.5rem var(--tably-cell-padding-x);
-  border-top: 1px solid var(--tably-border-color);
+  padding: 0.5rem var(--_t-cell-padding-x);
+  border-top: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-pagination) {
@@ -106,7 +164,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem 1.5rem;
-  color: var(--tably-muted-color);
+  color: var(--_t-muted-color);
 }
 
 :where(.tably-page-size) {
@@ -138,23 +196,23 @@
   height: 2rem;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--tably-input-radius);
+  border-radius: var(--_t-input-radius);
   background: none;
-  color: var(--tably-color);
+  color: var(--_t-color);
   cursor: pointer;
 }
 
 :where(.tably-page-button:hover:not(:disabled)) {
-  background: var(--tably-row-hover-bg);
+  background: var(--_t-row-hover-bg);
 }
 
 :where(.tably-page-button:focus-visible) {
-  outline: var(--tably-focus-ring);
+  outline: var(--_t-focus-ring);
   outline-offset: -2px;
 }
 
 :where(.tably-page-button:disabled) {
-  color: var(--tably-muted-color);
+  color: var(--_t-muted-color);
   opacity: 0.5;
   cursor: default;
 }
@@ -166,13 +224,13 @@
 }
 
 :where(.tably-th) {
-  padding: var(--tably-cell-padding-y) var(--tably-cell-padding-x);
-  background: var(--tably-header-bg);
-  color: var(--tably-header-color);
-  font-weight: var(--tably-header-font-weight);
+  padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
+  background: var(--_t-header-bg);
+  color: var(--_t-header-color);
+  font-weight: var(--_t-header-font-weight);
   text-align: start;
   white-space: nowrap;
-  border-bottom: 1px solid var(--tably-border-color);
+  border-bottom: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-sort-button) {
@@ -190,19 +248,19 @@
 }
 
 :where(.tably-sort-button:focus-visible) {
-  outline: var(--tably-focus-ring);
+  outline: var(--_t-focus-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 :where(.tably-sort-indicator) {
   flex-shrink: 0;
-  fill: var(--tably-sort-indicator-color);
+  fill: var(--_t-sort-indicator-color);
 }
 
 :where(.tably-sort-indicator[data-direction='asc'] .tably-sort-indicator-asc),
 :where(.tably-sort-indicator[data-direction='desc'] .tably-sort-indicator-desc) {
-  fill: var(--tably-sort-indicator-active-color);
+  fill: var(--_t-sort-indicator-active-color);
 }
 
 :where(.tably-sort-indicator[data-direction='asc'] .tably-sort-indicator-desc),
@@ -212,12 +270,12 @@
 
 :where(.tably-sort-index) {
   font-size: 0.75em;
-  color: var(--tably-muted-color);
+  color: var(--_t-muted-color);
 }
 
 :where(.tably-td) {
-  padding: var(--tably-cell-padding-y) var(--tably-cell-padding-x);
-  border-bottom: 1px solid var(--tably-border-color);
+  padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
+  border-bottom: 1px solid var(--_t-border-color);
 }
 
 :where(.tably-tbody .tably-tr:last-child .tably-td) {
@@ -229,26 +287,64 @@
 }
 
 :where(.tably-tr-clickable:hover) {
-  background: var(--tably-row-hover-bg);
+  background: var(--_t-row-hover-bg);
 }
 
 :where(.tably-tr-clickable:focus-visible) {
-  outline: var(--tably-focus-ring);
+  outline: var(--_t-focus-ring);
   outline-offset: -2px;
 }
 
+:where(.tably-th[data-align='center'], .tably-td[data-align='center']) {
+  text-align: center;
+}
+
+:where(.tably-th[data-align='end'], .tably-td[data-align='end']) {
+  text-align: end;
+}
+
+:where(.tably-th[data-align='center'] .tably-sort-button) {
+  justify-content: center;
+}
+
+:where(.tably-th[data-align='end'] .tably-sort-button) {
+  flex-direction: row-reverse;
+}
+
+/* <Table striped> */
+:where(.tably-container[data-striped] .tably-tbody .tably-tr:nth-child(even)) {
+  background: var(--_t-stripe-bg);
+}
+
+/* <Table highlightOnHover> */
+:where(.tably-container[data-hover] .tably-tbody .tably-tr:hover) {
+  background: var(--_t-row-hover-bg);
+}
+
+/* <Table bordered> */
+:where(.tably-container[data-bordered] :is(.tably-th, .tably-td, .tably-filter-cell):not(:last-child)) {
+  border-inline-end: 1px solid var(--_t-border-color);
+}
+
+:where(.tably-caption) {
+  padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
+  caption-side: top;
+  color: var(--_t-muted-color);
+  text-align: start;
+}
+
 :where(.tably-empty, .tably-loading) {
-  padding: calc(var(--tably-cell-padding-y) * 2) var(--tably-cell-padding-x);
-  color: var(--tably-muted-color);
+  padding: calc(var(--_t-cell-padding-y) * 2) var(--_t-cell-padding-x);
+  color: var(--_t-muted-color);
   text-align: center;
 }
 
 :where(.tably-spinner) {
   display: inline-block;
-  width: var(--tably-spinner-size);
-  height: var(--tably-spinner-size);
-  border: 2px solid var(--tably-border-color);
-  border-top-color: var(--tably-spinner-color);
+  width: var(--_t-spinner-size);
+  height: var(--_t-spinner-size);
+  border: 2px solid var(--_t-border-color);
+  border-top-color: var(--_t-spinner-color);
   border-radius: 50%;
   animation: tably-spin 0.8s linear infinite;
 }

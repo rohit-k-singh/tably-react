@@ -99,6 +99,12 @@ export interface ColumnDefBase<TData extends RowData, TValue>
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
   cell?: Renderable<CellContext<TData, TValue>>
+  /** Horizontal alignment of the header and body cells, e.g. `'end'` for numbers. */
+  align?: 'start' | 'center' | 'end'
+  /** Column width: a number of pixels or any CSS length. */
+  width?: number | string
+  minWidth?: number | string
+  maxWidth?: number | string
   /** Class name added to every body cell of the column. */
   className?: string
   /** Class name added to the header cell of the column. */

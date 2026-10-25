@@ -5,7 +5,9 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Fully typed columns, including nested `accessorKey` paths such as `'address.city'`
 - Headless `useTable` hook for custom markup, plus a ready-made `<Table>` component
 - No runtime dependencies; works with React 18 and 19
-- Optional, framework-agnostic stylesheet themed with CSS variables
+- Optional, framework-agnostic stylesheet: light / dark / auto themes, three densities, striped and bordered rows,
+  all adjustable with CSS variables
+- Class name slots for every part (works with Tailwind), row props, and translatable texts
 - ESM and CommonJS builds, server-rendering safe (`'use client'` included for React Server Components)
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
@@ -63,6 +65,8 @@ Every column accepts:
 | `id` | `string` | Unique id. Defaults to `accessorKey`. |
 | `header` | `ReactNode \| (context) => ReactNode \| Component` | Header content. Defaults to the column id. Context: `{ table, column }`. |
 | `cell` | `ReactNode \| (context) => ReactNode \| Component` | Cell content. Defaults to the formatted value. Context: `{ table, column, row, cell, getValue }`. |
+| `align` | `'start' \| 'center' \| 'end'` | Alignment of the header and body cells, e.g. `'end'` for numbers. |
+| `width`, `minWidth`, `maxWidth` | `number \| string` | Column size in pixels or any CSS length. |
 | `className` | `string` | Class added to the column's body cells. |
 | `headerClassName` | `string` | Class added to the column's header cell. |
 | `meta` | `ColumnMeta` | Your own data. Type it with declaration merging (see below). |
@@ -257,7 +261,44 @@ In code: `table.nextPage()`, `previousPage()`, `firstPage()`, `lastPage()`, `set
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
 | `className` | `string` | | Class added to the outer container. |
+| `classNames` | `TableClassNames` | | Classes for each part: `container`, `toolbar`, `scroll`, `table`, `caption`, `thead`, `headerRow`, `th`, `filterRow`, `filterCell`, `tbody`, `tr`, `td`, `empty`, `loading`, `footer`. |
+| `rowClassName` | `string \| (row) => string` | | Class for each body row. |
+| `getRowProps` | `(row) => attributes` | | Extra attributes or handlers for each body row. Calling `event.preventDefault()` in its `onClick` skips `onRowClick`. |
+| `theme` | `'light' \| 'dark' \| 'auto'` | `'light'` | Theme of the default stylesheet; `'auto'` follows the OS. |
+| `density` | `'compact' \| 'standard' \| 'comfortable'` | `'standard'` | Cell spacing. |
+| `striped`, `highlightOnHover`, `bordered` | `boolean` | `false` | Alternate row backgrounds, highlight the hovered row, borders between columns. |
+| `caption` | `ReactNode` | | Visible caption, also the table's accessible name. |
+| `loadingIndicator` | `ReactNode` | spinner | Replaces the loading spinner. |
+| `localeText` | `Partial<TableLocaleText>` | English | Built-in texts. See [Translation](#translation). |
 | `aria-label` | `string` | | Accessible name for the table. |
+
+## Translation
+
+Every built-in text can be replaced, per table with `localeText` or for a whole app with `TableLocaleProvider`
+(which also covers `TableSearch` and `TablePagination` used on their own):
+
+```tsx
+import { TableLocaleProvider } from 'tably-react'
+
+<TableLocaleProvider
+  localeText={{
+    empty: 'Keine Daten',
+    noResults: 'Keine Treffer',
+    searchLabel: 'Suche',
+    searchPlaceholder: 'Suchen…',
+    filterLabel: (column) => `${column} filtern`,
+    rowsPerPage: 'Zeilen pro Seite',
+    pageRange: (from, to, total) => (total === -1 ? `${from}–${to}` : `${from}–${to} von ${total}`),
+    pageStatus: (page, count) => (count === -1 ? `Seite ${page}` : `Seite ${page} von ${count}`),
+    previousPage: 'Vorherige Seite',
+    nextPage: 'Nächste Seite'
+  }}
+>
+  <App />
+</TableLocaleProvider>
+```
+
+See `TableLocaleText` for the full list; `defaultLocaleText` holds the English defaults.
 
 ## Headless usage
 
@@ -303,15 +344,40 @@ state in `options.state` (start from `getDefaultTableState()`) and reports chang
 `tably-react/styles.css` is optional. Every rule in it has zero specificity (`:where(...)`), so any class you add,
 whether plain CSS, CSS modules or Tailwind utilities, takes precedence without `!important`.
 
-Theme the table by overriding CSS variables on the container or any ancestor:
+Pick a built-in look with props:
+
+```tsx
+<Table data={users} columns={columns} theme="auto" density="compact" striped highlightOnHover bordered />
+```
+
+`theme="auto"` follows the OS setting. Alternatively, put `data-tably-theme="dark"` on any ancestor (e.g. `<html>`) to
+switch every table inside it to dark, unless the table sets `theme="light"`.
+
+Adjust colors and spacing with CSS variables, on the table (`className`) or any ancestor, e.g. `:root`. They apply to
+both themes:
 
 ```css
-.my-table {
+:root {
   --tably-header-bg: #111827;
   --tably-header-color: #f9fafb;
   --tably-row-hover-bg: #eef2ff;
   --tably-cell-padding-y: 0.5rem;
 }
+```
+
+With Tailwind, use `classNames` (and skip the stylesheet if you style everything yourself):
+
+```tsx
+<Table
+  data={users}
+  columns={columns}
+  classNames={{
+    container: 'rounded-lg border border-gray-200',
+    th: 'bg-gray-50 px-4 py-2 text-left text-sm font-semibold',
+    td: 'px-4 py-2 text-sm',
+    tr: 'border-t border-gray-100 hover:bg-gray-50'
+  }}
+/>
 ```
 
 | Variable | Purpose |
@@ -325,10 +391,11 @@ Theme the table by overriding CSS variables on the container or any ancestor:
 | `--tably-spinner-color`, `--tably-spinner-size` | Loading indicator |
 | `--tably-sort-indicator-color`, `--tably-sort-indicator-active-color` | Sort arrows |
 | `--tably-input-bg`, `--tably-input-border-color`, `--tably-input-radius` | Search and filter inputs |
+| `--tably-stripe-bg` | Background of alternate rows with `striped` |
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
 `tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
-`tably-page-button`, `tably-page-status`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-page-button`, `tably-page-status`, `tably-caption`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development
