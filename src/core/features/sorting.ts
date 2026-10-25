@@ -124,7 +124,7 @@ export function createSortingColumnApi<TData extends RowData>(
   const { columnDef } = column
 
   const getAutoSortingFn = (): SortingFn<TData> => {
-    for (const row of table.getPreSortedRowModel().rows.slice(0, 10)) {
+    for (const row of table.getCoreRowModel().rows.slice(0, 10)) {
       const value = row.getValue(column.id)
       if (isMissing(value)) continue
       if (value instanceof Date) return sortingFns.datetime

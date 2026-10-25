@@ -1,4 +1,5 @@
 import { createColumns } from './columns'
+import { createFilteringTableApi } from './features/filtering'
 import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
 import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
@@ -6,7 +7,9 @@ import { memo } from './utils'
 
 export function getDefaultTableState(): TableState {
   return {
-    sorting: []
+    sorting: [],
+    columnFilters: [],
+    globalFilter: undefined
   }
 }
 
@@ -49,7 +52,8 @@ export function createTable<TData extends RowData>(
     }
   )
 
-  Object.assign(table, createSortingTableApi(table, table.getCoreRowModel))
+  Object.assign(table, createFilteringTableApi(table, table.getCoreRowModel))
+  Object.assign(table, createSortingTableApi(table, table.getFilteredRowModel))
 
   table.getRowModel = () => table.getSortedRowModel()
 

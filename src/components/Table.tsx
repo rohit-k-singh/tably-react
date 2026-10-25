@@ -1,29 +1,45 @@
 import type { KeyboardEvent, ReactNode } from 'react'
-import type { Column, Row, RowData, TableInstance, TableOptions } from '../core/types'
+import type { Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
+import { ColumnFilter } from './ColumnFilter'
+import { cx } from './cx'
 import { formatValue } from './formatValue'
+import { HeaderCell } from './HeaderCell'
 
 export interface TableProps<TData extends RowData> extends TableOptions<TData> {
-  /** Class name added to the scroll container wrapping the table. */
+  /** Class name added to the outer container. */
   className?: string
   /** Shows a loading indicator instead of the table body. */
   loading?: boolean
-  /** Content shown when there are no rows. */
+  /** Content shown when `data` is empty. */
   emptyMessage?: ReactNode
+  /** Content shown when filters match no rows. */
+  noResultsMessage?: ReactNode
   /** Called when a row is clicked, or activated with Enter / Space. */
   onRowClick?: (original: TData, row: Row<TData>) => void
+  /**
+   * Content above the table, e.g. a search box:
+   * `toolbar={(table) => <TableSearch table={table} />}`
+   */
+  toolbar?: ReactNode | ((table: TableInstance<TData>) => ReactNode)
+  /** Shows a row of filter controls under the header. */
+  showColumnFilters?: boolean
+  /** Delay before typed column filters are applied. Defaults to 200 ms. */
+  filterDebounceMs?: number
   /** Accessible label for the table. */
   'aria-label'?: string
 }
-
-const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ')
 
 export function Table<TData extends RowData>({
   className,
   loading = false,
   emptyMessage = 'No data available',
+  noResultsMessage = 'No matching results',
   onRowClick,
+  toolbar,
+  showColumnFilters = false,
+  filterDebounceMs = 200,
   'aria-label': ariaLabel,
   ...options
 }: TableProps<TData>) {
@@ -39,25 +55,23 @@ export function Table<TData extends RowData>({
     }
   }
 
+  const renderMessage = (className: string, content: ReactNode) => (
+    <tr>
+      <td colSpan={columns.length} className={className}>
+        {content}
+      </td>
+    </tr>
+  )
+
   const renderBody = () => {
     if (loading) {
-      return (
-        <tr>
-          <td colSpan={columns.length} className="tably-loading">
-            <span className="tably-spinner" role="status" aria-label="Loading" />
-          </td>
-        </tr>
-      )
+      return renderMessage('tably-loading', <span className="tably-spinner" role="status" aria-label="Loading" />)
     }
-
     if (rows.length === 0) {
-      return (
-        <tr>
-          <td colSpan={columns.length} className="tably-empty">
-            {emptyMessage}
-          </td>
-        </tr>
-      )
+      const hasData = table.getCoreRowModel().rows.length > 0
+      return hasData
+        ? renderMessage('tably-empty tably-no-results', noResultsMessage)
+        : renderMessage('tably-empty', emptyMessage)
     }
 
     return rows.map((row) => (
@@ -84,70 +98,36 @@ export function Table<TData extends RowData>({
 
   return (
     <div className={cx('tably-container', className)}>
-      <table className="tably-table" aria-label={ariaLabel} aria-busy={loading || undefined}>
-        <thead className="tably-thead">
-          <tr>
-            {columns.map((column) => (
-              <HeaderCell key={column.id} table={table} column={column} />
-            ))}
-          </tr>
-        </thead>
-        <tbody className="tably-tbody">{renderBody()}</tbody>
-      </table>
-    </div>
-  )
-}
-
-function HeaderCell<TData extends RowData>({
-  table,
-  column
-}: {
-  table: TableInstance<TData>
-  column: Column<TData>
-}) {
-  const { header, headerClassName } = column.columnDef
-  const content = header === undefined ? column.id : flexRender(header, { table, column })
-  const canSort = column.getCanSort()
-  const sorted = column.getIsSorted()
-  const { sorting } = table.getState()
-
-  return (
-    <th
-      scope="col"
-      className={cx('tably-th', canSort && 'tably-th-sortable', headerClassName)}
-      aria-sort={sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : undefined}
-    >
-      {canSort ? (
-        <button type="button" className="tably-sort-button" onClick={column.getToggleSortingHandler()}>
-          {content}
-          <SortIndicator direction={sorted} />
-          {sorted && sorting.length > 1 && (
-            <span className="tably-sort-index" aria-hidden="true">
-              {column.getSortIndex() + 1}
-            </span>
-          )}
-        </button>
-      ) : (
-        content
+      {toolbar !== undefined && (
+        <div className="tably-toolbar">{typeof toolbar === 'function' ? toolbar(table) : toolbar}</div>
       )}
-    </th>
-  )
-}
-
-function SortIndicator({ direction }: { direction: false | 'asc' | 'desc' }) {
-  return (
-    <svg
-      className="tably-sort-indicator"
-      data-direction={direction || 'none'}
-      viewBox="0 0 10 14"
-      width="10"
-      height="14"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path className="tably-sort-indicator-asc" d="M5 1 9 6H1z" />
-      <path className="tably-sort-indicator-desc" d="M5 13 1 8h8z" />
-    </svg>
+      <div className="tably-scroll">
+        <table className="tably-table" aria-label={ariaLabel} aria-busy={loading || undefined}>
+          <thead className="tably-thead">
+            <tr>
+              {columns.map((column) => (
+                <HeaderCell key={column.id} table={table} column={column} />
+              ))}
+            </tr>
+            {showColumnFilters && (
+              <tr className="tably-filter-row">
+                {columns.map((column) => (
+                  <td key={column.id} className="tably-filter-cell">
+                    {column.getCanFilter() &&
+                      (column.columnDef.filter === undefined ? (
+                        <ColumnFilter table={table} column={column} debounceMs={filterDebounceMs} />
+                      ) : (
+                        flexRender(column.columnDef.filter, { table, column })
+                      ))}
+                  </td>
+                ))}
+              </tr>
+            )}
+          </thead>
+          <tbody className="tably-tbody">{renderBody()}</tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 

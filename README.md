@@ -8,6 +8,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Optional, framework-agnostic stylesheet themed with CSS variables
 - ESM and CommonJS builds, server-rendering safe (`'use client'` included for React Server Components)
 - Sorting: multi-column, natural string order, custom comparators, client or server side
+- Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 ## Installation
@@ -135,6 +136,60 @@ const { data } = useQuery({ queryKey: ['users', sorting], queryFn: () => fetchUs
 <Table data={data ?? []} columns={columns} manualSorting state={{ sorting }} onSortingChange={setSorting} />
 ```
 
+## Filtering
+
+Add a search box and a row of column filters:
+
+```tsx
+import { Table, TableSearch } from 'tably-react'
+
+<Table data={users} columns={columns} showColumnFilters toolbar={(table) => <TableSearch table={table} />} />
+```
+
+The global search matches every string and number column (case-insensitive substring). Column filters pick a
+filter function and a control from the column's values:
+
+| Values | Filter function | Default control |
+| --- | --- | --- |
+| Strings | `includesString` | Text input |
+| Numbers | `inNumberRange` (`[min, max]`, either end optional) | Min / max inputs |
+| Dates | `inDateRange` (`[from, to]`, a date-only `to` includes the whole day) | From / to date inputs |
+| Booleans | `equals` | All / Yes / No select |
+| Arrays | `arrIncludes` | Text input |
+
+Other built-in functions: `includesStringSensitive`, `equalsString`, `weakEquals`, `arrIncludesAll`, `arrIncludesSome` and
+`inArray` (the value is one of the selected items). Empty filter values (`''`, `undefined`, `[]`, `[undefined, undefined]`)
+remove the filter.
+
+Column options:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enableColumnFilter` | `true` | Allow filtering this column. |
+| `filterFn` | `'auto'` | A built-in name or `(row, columnId, filterValue) => boolean`. Give a custom function an `autoRemove(value)` property to decide when a value clears the filter. |
+| `enableGlobalFilter` | string / number columns | Include this column in the global search. |
+| `filter` | built-in control | Custom control for the filter row: `({ column }) => <MySelect value={column.getFilterValue()} onChange={column.setFilterValue} />` |
+
+Table options and props:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `initialState.columnFilters` / `initialState.globalFilter` | | Starting filters, e.g. `[{ id: 'age', value: [18, 65] }]`. |
+| `state.columnFilters` + `onColumnFiltersChange`, `state.globalFilter` + `onGlobalFilterChange` | | Control the filters yourself. |
+| `enableFilters`, `enableColumnFilters`, `enableGlobalFilter` | `true` | Turn filtering off entirely, or one kind of it. |
+| `globalFilterFn` | `'includesString'` | How the search matches each column value. |
+| `manualFiltering` | `false` | Rows are filtered elsewhere (e.g. by your API); only the state is tracked. |
+| `showColumnFilters` | `false` | Show the filter row (`<Table>` only). |
+| `filterDebounceMs` | `200` | Delay before typed column filters apply (`<Table>` only). |
+| `toolbar` | | Content above the table, as a node or `(table) => node` (`<Table>` only). |
+| `noResultsMessage` | `'No matching results'` | Shown when filters match no rows (`<Table>` only). |
+
+`<TableSearch>` accepts `table`, `placeholder`, `debounceMs` (default `200`), `className` and `aria-label` (default
+`"Search"`). `<ColumnFilter table column />` is the default filter control, for use in your own layouts.
+
+In code, use `column.setFilterValue(value)`, `column.getFilterValue()`, `table.setGlobalFilter(value)`,
+`table.resetColumnFilters()` and `table.resetGlobalFilter()`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -143,11 +198,11 @@ const { data } = useQuery({ queryKey: ['users', sorting], queryFn: () => fetchUs
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting). |
+| Feature options | | | See [Sorting](#sorting) and [Filtering](#filtering). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
-| `className` | `string` | | Class added to the scroll container. |
+| `className` | `string` | | Class added to the outer container. |
 | `aria-label` | `string` | | Accessible name for the table. |
 
 ## Headless usage
@@ -215,8 +270,10 @@ Theme the table by overriding CSS variables on the container or any ancestor:
 | `--tably-row-hover-bg`, `--tably-focus-ring` | Interactive rows |
 | `--tably-spinner-color`, `--tably-spinner-size` | Loading indicator |
 | `--tably-sort-indicator-color`, `--tably-sort-indicator-active-color` | Sort arrows |
+| `--tably-input-bg`, `--tably-input-border-color`, `--tably-input-radius` | Search and filter inputs |
 
-To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-table`, `tably-thead`,
+To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
+`tably-search`, `tably-scroll`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development
