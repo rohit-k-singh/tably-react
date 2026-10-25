@@ -1,4 +1,4 @@
-import { useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { useMemo, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
@@ -8,6 +8,7 @@ import { headerStyle, leafCellStyle, pinnedAttributes } from './cellStyle'
 import { formatValue } from './formatValue'
 import { HeaderCell } from './HeaderCell'
 import { TableLocaleProvider, useLocaleText, type TableLocaleText } from './locale'
+import { createSelectionColumn, type SelectAllScope } from './selectionColumn'
 import { TablePagination } from './TablePagination'
 
 /** Class names added to each part of the table, e.g. for Tailwind. */
@@ -82,6 +83,15 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   stickyHeader?: boolean
   /** Maximum height of the scrollable table area, in pixels or any CSS length. */
   maxHeight?: number | string
+  /**
+   * What the header checkbox selects with `enableRowSelection`: every row
+   * matching the filters (`'all'`, default) or the current page.
+   */
+  selectAllScope?: SelectAllScope
+  /** Hides the checkbox column added by `enableRowSelection`, e.g. to select rows only by clicking them. */
+  hideSelectionColumn?: boolean
+  /** Toggles a row's selection when it is clicked. */
+  selectRowOnClick?: boolean
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -120,9 +130,20 @@ function TableContent<TData extends RowData>({
   enableColumnActions = false,
   stickyHeader = false,
   maxHeight,
+  selectAllScope = 'all',
+  hideSelectionColumn = false,
+  selectRowOnClick = false,
   'aria-label': ariaLabel,
-  ...options
+  ...tableOptions
 }: Omit<TableProps<TData>, 'localeText'>) {
+  const selectable = !!tableOptions.enableRowSelection
+  const showSelectionColumn = selectable && !hideSelectionColumn
+  const columnDefs = useMemo(
+    () =>
+      showSelectionColumn ? [createSelectionColumn<TData>(selectAllScope), ...tableOptions.columns] : tableOptions.columns,
+    [tableOptions.columns, showSelectionColumn, selectAllScope]
+  )
+  const options = { ...tableOptions, columns: columnDefs }
   const table = useTable(options)
   const text = useLocaleText()
   const columns = table.getVisibleLeafColumns()
@@ -141,16 +162,21 @@ function TableContent<TData extends RowData>({
   const renderRow = (row: Row<TData>) => {
     const { className: extraClassName, onClick, onKeyDown, ...rowProps } = getRowProps?.(row) ?? {}
 
+    const clickable = !!onRowClick || selectRowOnClick
+    const activate = () => {
+      if (selectRowOnClick) row.toggleSelected()
+      onRowClick?.(row.original, row)
+    }
     const handleClick = (event: MouseEvent<HTMLTableRowElement>) => {
       onClick?.(event)
-      if (!event.defaultPrevented) onRowClick?.(row.original, row)
+      if (!event.defaultPrevented) activate()
     }
     const handleKeyDown = (event: KeyboardEvent<HTMLTableRowElement>) => {
       onKeyDown?.(event)
       if (event.defaultPrevented || event.target !== event.currentTarget) return
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
-        onRowClick?.(row.original, row)
+        activate()
       }
     }
 
@@ -158,16 +184,18 @@ function TableContent<TData extends RowData>({
       <tr
         key={row.id}
         {...rowProps}
+        aria-selected={selectable ? row.getIsSelected() : undefined}
+        data-selected={(selectable && row.getIsSelected()) || undefined}
         className={cx(
           'tably-tr',
-          onRowClick && 'tably-tr-clickable',
+          clickable && 'tably-tr-clickable',
           classNames.tr,
           typeof rowClassName === 'function' ? rowClassName(row) : rowClassName,
           extraClassName
         )}
-        onClick={onRowClick ? handleClick : onClick}
-        onKeyDown={onRowClick ? handleKeyDown : onKeyDown}
-        tabIndex={onRowClick ? 0 : rowProps.tabIndex}
+        onClick={clickable ? handleClick : onClick}
+        onKeyDown={clickable ? handleKeyDown : onKeyDown}
+        tabIndex={clickable ? 0 : rowProps.tabIndex}
       >
         {row.getVisibleCells().map((cell) => {
           const { cell: renderCell, className: cellClassName, align } = cell.column.columnDef

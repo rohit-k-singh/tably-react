@@ -1,3 +1,4 @@
+import { createSelectionRowApi } from './features/selection'
 import type { Cell, Column, Row, RowData, RowModel, TableInstance } from './types'
 
 export function createRow<TData extends RowData>(
@@ -10,7 +11,7 @@ export function createRow<TData extends RowData>(
   let cells: Cell<TData>[] | undefined
   let cellsByColumn: Map<string, Cell<TData>> | undefined
 
-  const row: Row<TData> = {
+  const row = {
     id,
     index,
     original,
@@ -26,9 +27,9 @@ export function createRow<TData extends RowData>(
       cellsByColumn ??= new Map(row.getCells().map((cell) => [cell.column.id, cell]))
       return table.getVisibleLeafColumns().map((column) => cellsByColumn!.get(column.id)!)
     }
-  }
+  } as Row<TData>
 
-  return row
+  return Object.assign(row, createSelectionRowApi(table, row))
 }
 
 function createCell<TData extends RowData>(

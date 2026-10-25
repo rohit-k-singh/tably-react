@@ -7,6 +7,7 @@ import {
 import { createFilteringTableApi } from './features/filtering'
 import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
 import { createPinningTableApi, getDefaultColumnPinning } from './features/pinning'
+import { createSelectionTableApi } from './features/selection'
 import { createSizingTableApi } from './features/sizing'
 import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
@@ -22,7 +23,8 @@ export function getDefaultTableState(): TableState {
     columnVisibility: {},
     columnOrder: [],
     columnSizing: {},
-    columnPinning: getDefaultColumnPinning()
+    columnPinning: getDefaultColumnPinning(),
+    rowSelection: {}
   }
 }
 
@@ -102,6 +104,8 @@ export function createTable<TData extends RowData>(
   Object.assign(table, createPaginationTableApi(table, table.getSortedRowModel))
 
   table.getRowModel = () => table.getPaginationRowModel()
+
+  Object.assign(table, createSelectionTableApi(table))
 
   return table
 }

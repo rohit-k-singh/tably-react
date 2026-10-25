@@ -24,6 +24,12 @@ import type {
   PinningTableState
 } from './features/pinning'
 import type {
+  SelectionInstance,
+  SelectionOptions,
+  SelectionRow,
+  SelectionTableState
+} from './features/selection'
+import type {
   SizingColumn,
   SizingColumnDef,
   SizingInstance,
@@ -256,7 +262,7 @@ export interface HeaderGroup<TData extends RowData> {
   headers: Header<TData>[]
 }
 
-export interface Row<TData extends RowData> {
+export interface Row<TData extends RowData> extends SelectionRow {
   /** Unique row id from `getRowId`; the row index by default. */
   id: string
   /** Position of the row in the `data` option. */
@@ -292,7 +298,8 @@ export interface TableState
     VisibilityTableState,
     ColumnOrderTableState,
     SizingTableState,
-    PinningTableState {}
+    PinningTableState,
+    SelectionTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
@@ -301,7 +308,8 @@ export interface TableOptions<TData extends RowData>
     VisibilityOptions,
     ColumnOrderOptions,
     SizingOptions,
-    PinningOptions {
+    PinningOptions,
+    SelectionOptions<TData> {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -327,7 +335,8 @@ export interface TableInstance<TData extends RowData>
     VisibilityInstance,
     ColumnOrderInstance<TData>,
     SizingInstance,
-    PinningInstance<TData> {
+    PinningInstance<TData>,
+    SelectionInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState

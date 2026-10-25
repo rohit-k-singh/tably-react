@@ -10,6 +10,8 @@
 - Column resizing (`enableColumnResizing`) with pointer and keyboard handles, column pinning, a column actions menu
   (`enableColumnActions`) and a sticky header (`stickyHeader` + `maxHeight`).
 - The table now uses `border-collapse: separate` so borders stay attached to sticky cells.
+- Row selection (`enableRowSelection`): checkbox column, select all (filtered rows or page) with an indeterminate
+  state, Shift-click ranges, single selection, `selectRowOnClick`, and selected row models.
 
 ## 0.0.1
 

@@ -12,6 +12,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
+- Row selection: checkboxes, select all (filtered rows or page), Shift-click ranges, single selection
 - Columns: multi-level header groups, show / hide and reorder (menu or drag and drop), resize, pin left / right,
   per-column actions menu, sticky header
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
@@ -334,6 +335,40 @@ In code: `column.getSize()`, `column.setSize(px)`, `column.resetSize()`, `table.
 `table.resetColumnSizing()`, `column.getIsPinned()`, `column.getPinnedOffset()`, `table.getLeftLeafColumns()`,
 `table.getCenterLeafColumns()`, `table.getRightLeafColumns()` and `table.resetColumnPinning()`.
 
+## Row selection
+
+```tsx
+<Table
+  data={users}
+  columns={columns}
+  getRowId={(user) => String(user.id)}
+  enableRowSelection
+  toolbar={(table) => <span>{table.getSelectedRowModel().rows.length} selected</span>}
+/>
+```
+
+`enableRowSelection` adds a checkbox column (id `tably-select`, which you can pin like any column). The header checkbox
+selects every row matching the filters, or only the current page with `selectAllScope="page"`; it shows an
+indeterminate state when some rows are selected. Shift-click selects or deselects the range from the last clicked row.
+Selected rows get `aria-selected="true"` and the `--tably-selected-bg` background.
+
+Selection is stored by row id, so provide `getRowId` when rows can change. Selected rows stay selected when they are
+filtered out or on another page.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enableRowSelection` | `false` | `true`, or `(row) => boolean` to allow only some rows. |
+| `enableMultiRowSelection` | `true` | `false` keeps at most one row selected (and hides the header checkbox). |
+| `initialState.rowSelection`, `state.rowSelection` + `onRowSelectionChange` | `{}` | Selected row ids, e.g. `{ '42': true }`. |
+| `selectAllScope` | `'all'` | `'page'` makes the header checkbox select the current page (`<Table>` only). |
+| `selectRowOnClick` | `false` | Clicking a row (or Enter / Space on it) toggles its selection (`<Table>` only). |
+| `hideSelectionColumn` | `false` | Omit the checkbox column, e.g. with `selectRowOnClick` (`<Table>` only). |
+
+In code: `row.toggleSelected(selected?)`, `row.getIsSelected()`, `row.getCanSelect()`, `table.toggleAllRowsSelected()`,
+`table.toggleAllPageRowsSelected()`, `table.setRowRangeSelected(fromId, toId, selected)`,
+`table.getSelectedRowModel()` (all selected rows), `table.getFilteredSelectedRowModel()` and
+`table.resetRowSelection()`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -342,7 +377,7 @@ In code: `column.getSize()`, `column.setSize(px)`, `column.resetSize()`, `table.
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header) and [Row selection](#row-selection). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -480,12 +515,14 @@ With Tailwind, use `classNames` (and skip the stylesheet if you style everything
 | `--tably-sort-indicator-color`, `--tably-sort-indicator-active-color` | Sort arrows |
 | `--tably-input-bg`, `--tably-input-border-color`, `--tably-input-radius` | Search and filter inputs |
 | `--tably-stripe-bg` | Background of alternate rows with `striped` |
+| `--tably-selected-bg` | Background of selected rows |
+| `--tably-accent-color` | Checkbox color |
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
 `tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
 `tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
 `tably-menu`, `tably-button`, `tably-icon-button`, `tably-th-content`, `tably-column-actions`, `tably-resize-handle`,
-`tably-popover`, `[data-pinned]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-popover`, `[data-pinned]`, `tably-checkbox`, `tably-select-cell`, `[data-selected]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development
