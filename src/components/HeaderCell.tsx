@@ -1,15 +1,20 @@
+import type { CSSProperties } from 'react'
 import type { Column, RowData, TableInstance } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { cx } from './cx'
 
 export function HeaderCell<TData extends RowData>({
   table,
-  column
+  column,
+  className,
+  style
 }: {
   table: TableInstance<TData>
   column: Column<TData>
+  className?: string
+  style?: CSSProperties
 }) {
-  const { header, headerClassName } = column.columnDef
+  const { header, headerClassName, align } = column.columnDef
   const content = header === undefined ? column.id : flexRender(header, { table, column })
   const canSort = column.getCanSort()
   const sorted = column.getIsSorted()
@@ -18,7 +23,9 @@ export function HeaderCell<TData extends RowData>({
   return (
     <th
       scope="col"
-      className={cx('tably-th', canSort && 'tably-th-sortable', headerClassName)}
+      className={cx('tably-th', canSort && 'tably-th-sortable', className, headerClassName)}
+      data-align={align}
+      style={style}
       aria-sort={sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : undefined}
     >
       {canSort ? (

@@ -1,5 +1,7 @@
 export { Table, Table as default } from './components/Table'
-export type { TableProps } from './components/Table'
+export type { TableClassNames, TableProps } from './components/Table'
+export { TableLocaleProvider, defaultLocaleText } from './components/locale'
+export type { TableLocaleText } from './components/locale'
 export { TableSearch } from './components/TableSearch'
 export type { TableSearchProps } from './components/TableSearch'
 export { TablePagination } from './components/TablePagination'

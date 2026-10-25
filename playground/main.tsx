@@ -41,9 +41,9 @@ const people: Person[] = Array.from({ length: 25 }, (_, i) => {
 })
 
 const columns: ColumnDef<Person>[] = [
-  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'name', header: 'Name', minWidth: 160 },
   { accessorKey: 'email', header: 'Email' },
-  { accessorKey: 'age', header: 'Age' },
+  { accessorKey: 'age', header: 'Age', align: 'end', width: 140 },
   { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
   { accessorKey: 'address.city', header: 'City' },
   { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
@@ -66,6 +66,10 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [empty, setEmpty] = useState(false)
   const [filters, setFilters] = useState(true)
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light')
+  const [density, setDensity] = useState<'compact' | 'standard' | 'comfortable'>('standard')
+  const [striped, setStriped] = useState(false)
+  const [bordered, setBordered] = useState(false)
   const [selected, setSelected] = useState<Person | null>(null)
 
   return (
@@ -80,6 +84,28 @@ function App() {
         </label>{' '}
         <label>
           <input type="checkbox" checked={filters} onChange={(e) => setFilters(e.target.checked)} /> Column filters
+        </label>{' '}
+        <label>
+          <input type="checkbox" checked={striped} onChange={(e) => setStriped(e.target.checked)} /> Striped
+        </label>{' '}
+        <label>
+          <input type="checkbox" checked={bordered} onChange={(e) => setBordered(e.target.checked)} /> Bordered
+        </label>{' '}
+        <label>
+          Theme{' '}
+          <select value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}>
+            <option>light</option>
+            <option>dark</option>
+            <option>auto</option>
+          </select>
+        </label>{' '}
+        <label>
+          Density{' '}
+          <select value={density} onChange={(e) => setDensity(e.target.value as typeof density)}>
+            <option>compact</option>
+            <option>standard</option>
+            <option>comfortable</option>
+          </select>
         </label>
       </p>
       <Table
@@ -89,6 +115,12 @@ function App() {
         loading={loading}
         getRowId={getRowId}
         showColumnFilters={filters}
+        theme={theme}
+        density={density}
+        striped={striped}
+        bordered={bordered}
+        highlightOnHover
+        caption="Team directory"
         enablePagination
         initialState={{ pagination: { pageIndex: 0, pageSize: 5 } }}
         pageSizeOptions={[5, 10, 25]}

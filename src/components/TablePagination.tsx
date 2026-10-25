@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import type { RowData, TableInstance } from '../core/types'
 import { cx } from './cx'
+import { useLocaleText } from './locale'
 
 export interface TablePaginationProps<TData extends RowData> {
   table: TableInstance<TData>
@@ -19,6 +20,7 @@ export function TablePagination<TData extends RowData>({
   className
 }: TablePaginationProps<TData>) {
   const pageSizeId = useId()
+  const text = useLocaleText()
   const { pageSize } = table.getState().pagination
   const pageIndex = table.getPageIndex()
   const pageCount = table.getPageCount()
@@ -35,7 +37,7 @@ export function TablePagination<TData extends RowData>({
     <div className={cx('tably-pagination', className)}>
       {pageSizeOptions.length > 0 && (
         <div className="tably-page-size">
-          <label htmlFor={pageSizeId}>Rows per page</label>
+          <label htmlFor={pageSizeId}>{text.rowsPerPage}</label>
           <select
             id={pageSizeId}
             className="tably-input tably-page-size-select"
@@ -51,24 +53,24 @@ export function TablePagination<TData extends RowData>({
         </div>
       )}
       <span className="tably-page-range" aria-live="polite">
-        {rowCount === -1 ? `${from}–${to}` : `${from}–${to} of ${rowCount}`}
+        {text.pageRange(from, to, rowCount)}
       </span>
-      <nav className="tably-page-nav" aria-label="Pagination">
+      <nav className="tably-page-nav" aria-label={text.paginationLabel}>
         {showFirstLastButtons && (
-          <PageButton label="First page" icon="first" disabled={!table.getCanPreviousPage()} onClick={table.firstPage} />
+          <PageButton label={text.firstPage} icon="first" disabled={!table.getCanPreviousPage()} onClick={table.firstPage} />
         )}
         <PageButton
-          label="Previous page"
+          label={text.previousPage}
           icon="previous"
           disabled={!table.getCanPreviousPage()}
           onClick={table.previousPage}
         />
         <span className="tably-page-status">
-          {pageCount === -1 ? `Page ${pageIndex + 1}` : `Page ${pageIndex + 1} of ${pageCount}`}
+          {text.pageStatus(pageIndex + 1, pageCount)}
         </span>
-        <PageButton label="Next page" icon="next" disabled={!table.getCanNextPage()} onClick={table.nextPage} />
+        <PageButton label={text.nextPage} icon="next" disabled={!table.getCanNextPage()} onClick={table.nextPage} />
         {showFirstLastButtons && pageCount !== -1 && (
-          <PageButton label="Last page" icon="last" disabled={!table.getCanNextPage()} onClick={table.lastPage} />
+          <PageButton label={text.lastPage} icon="last" disabled={!table.getCanNextPage()} onClick={table.lastPage} />
         )}
       </nav>
     </div>
