@@ -36,6 +36,18 @@ export interface TableLocaleText {
   resetColumns: string
   moveColumnUp: (columnLabel: string) => string
   moveColumnDown: (columnLabel: string) => string
+  /** Button opening a column's actions menu. */
+  columnActions: (columnLabel: string) => string
+  sortAscending: string
+  sortDescending: string
+  clearSort: string
+  pinLeft: string
+  pinRight: string
+  unpin: string
+  hideColumn: string
+  resetWidth: string
+  /** Accessible label of a column's resize handle. */
+  resizeColumn: (columnLabel: string) => string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -65,7 +77,17 @@ export const defaultLocaleText: TableLocaleText = {
   showAllColumns: 'Show all',
   resetColumns: 'Reset',
   moveColumnUp: (column) => `Move ${column} up`,
-  moveColumnDown: (column) => `Move ${column} down`
+  moveColumnDown: (column) => `Move ${column} down`,
+  columnActions: (column) => `${column} column actions`,
+  sortAscending: 'Sort ascending',
+  sortDescending: 'Sort descending',
+  clearSort: 'Clear sort',
+  pinLeft: 'Pin to left',
+  pinRight: 'Pin to right',
+  unpin: 'Unpin',
+  hideColumn: 'Hide column',
+  resetWidth: 'Reset width',
+  resizeColumn: (column) => `Resize ${column}`
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

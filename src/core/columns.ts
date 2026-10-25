@@ -1,5 +1,7 @@
 import { createVisibilityColumnApi } from './features/columns'
 import { createFilteringColumnApi } from './features/filtering'
+import { createPinningColumnApi } from './features/pinning'
+import { createSizingColumnApi } from './features/sizing'
 import { createSortingColumnApi } from './features/sorting'
 import type { AnyColumnDef, Column, ColumnDef, RowData, TableInstance } from './types'
 import { getByPath } from './utils'
@@ -43,7 +45,9 @@ export function createColumns<TData extends RowData>(
         column,
         createSortingColumnApi(table, column),
         createFilteringColumnApi(table, column),
-        createVisibilityColumnApi(table, column)
+        createVisibilityColumnApi(table, column),
+        createSizingColumnApi(table, column),
+        createPinningColumnApi(table, column)
       )
     })
 

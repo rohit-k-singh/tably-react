@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { RowData, TableInstance } from '../core/types'
 import { columnLabel } from './columnLabel'
 import { cx } from './cx'
 import { useLocaleText } from './locale'
+import { Popover } from './Popover'
 
 export interface TableColumnsMenuProps<TData extends RowData> {
   table: TableInstance<TData>
@@ -20,30 +21,17 @@ export function TableColumnsMenu<TData extends RowData>({
   const text = useLocaleText()
   const [open, setOpen] = useState(false)
   const menuId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    panelRef.current?.querySelector<HTMLElement>('input, button')?.focus()
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
-
-  const close = () => {
+  const close = (restoreFocus: boolean) => {
     setOpen(false)
-    buttonRef.current?.focus()
+    if (restoreFocus) buttonRef.current?.focus()
   }
 
   const columns = table.getOrderedLeafColumns()
 
   return (
-    <div className={cx('tably-columns-menu', className)} ref={rootRef}>
+    <div className={cx('tably-columns-menu', className)}>
       <button
         ref={buttonRef}
         type="button"
@@ -54,20 +42,15 @@ export function TableColumnsMenu<TData extends RowData>({
       >
         {text.columnsButton}
       </button>
-      {open && (
-        <div
-          ref={panelRef}
-          id={menuId}
-          className="tably-menu"
-          role="dialog"
-          aria-label={text.columnsButton}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation()
-              close()
-            }
-          }}
-        >
+      <Popover
+        anchorRef={buttonRef}
+        open={open}
+        onClose={close}
+        id={menuId}
+        className="tably-menu"
+        role="dialog"
+        aria-label={text.columnsButton}
+      >
           <ul className="tably-menu-list">
             {columns.map((column, index) => {
               const label = columnLabel(column)
@@ -125,8 +108,7 @@ export function TableColumnsMenu<TData extends RowData>({
               {text.resetColumns}
             </button>
           </div>
-        </div>
-      )}
+      </Popover>
     </div>
   )
 }

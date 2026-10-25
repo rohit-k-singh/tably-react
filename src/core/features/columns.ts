@@ -155,8 +155,8 @@ export function orderColumns<TData extends RowData>(
 
 /**
  * Builds header rows for the given leaf columns. Group headers span the
- * adjacent visible leaves they contain (a group split by reordering gets one
- * header per run). Columns shallower than the deepest one span the remaining
+ * adjacent visible leaves they contain (a group split by reordering or
+ * pinning gets one header per run). Columns shallower than the deepest one span the remaining
  * header rows, so there are no empty placeholder cells.
  */
 export function buildHeaderGroups<TData extends RowData>(
@@ -171,27 +171,42 @@ export function buildHeaderGroups<TData extends RowData>(
     return chain
   })
 
+  const pinnedSides = leaves.map((leaf) => leaf.getIsPinned())
   const groups: HeaderGroup<TData>[] = []
   for (let depth = 0; depth <= maxDepth; depth++) {
     const headers: Header<TData>[] = []
+    const idCounts = new Map<string, number>()
     let previous: { header: Header<TData>; leafIndex: number } | undefined
 
     leaves.forEach((leaf, leafIndex) => {
       if (leaf.depth < depth) return
       const column = chains[leafIndex][depth]
 
-      if (previous && previous.header.column === column && previous.leafIndex === leafIndex - 1 && column !== leaf) {
+      // Extend the previous header over this leaf when it is the same group, adjacent,
+      // and on the same side of the pinned / unpinned boundary.
+      if (
+        previous &&
+        previous.header.column === column &&
+        previous.leafIndex === leafIndex - 1 &&
+        pinnedSides[leafIndex] === pinnedSides[leafIndex - 1] &&
+        column !== leaf
+      ) {
         previous.header.colSpan++
+        previous.header.leafColumns.push(leaf)
         previous.leafIndex = leafIndex
         return
       }
 
+      // Ids stay stable when columns move, so React keeps the header elements (and focus).
+      const count = idCounts.get(column.id) ?? 0
+      idCounts.set(column.id, count + 1)
       const header: Header<TData> = {
-        id: `${depth}_${column.id}_${headers.length}`,
+        id: count === 0 ? `${depth}_${column.id}` : `${depth}_${column.id}_${count}`,
         column,
         colSpan: 1,
         rowSpan: column === leaf ? maxDepth - depth + 1 : 1,
         depth,
+        leafColumns: [leaf],
         getContext: () => ({ table, column, header })
       }
       headers.push(header)

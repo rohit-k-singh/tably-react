@@ -1,9 +1,10 @@
-import { useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import type { Column, Row, RowData, TableInstance, TableOptions } from '../core/types'
+import { useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import type { Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
 import { ColumnFilter } from './ColumnFilter'
 import { cx } from './cx'
+import { headerStyle, leafCellStyle, pinnedAttributes } from './cellStyle'
 import { formatValue } from './formatValue'
 import { HeaderCell } from './HeaderCell'
 import { TableLocaleProvider, useLocaleText, type TableLocaleText } from './locale'
@@ -75,16 +76,14 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   pageSizeOptions?: number[]
   /** Lets users reorder columns by dragging their headers. */
   enableColumnDragging?: boolean
+  /** Adds a menu button to each header with sort, pin, hide and reset width actions. */
+  enableColumnActions?: boolean
+  /** Keeps the header visible while scrolling the table body. Needs `maxHeight`. */
+  stickyHeader?: boolean
+  /** Maximum height of the scrollable table area, in pixels or any CSS length. */
+  maxHeight?: number | string
   /** Accessible label for the table. */
   'aria-label'?: string
-}
-
-const toLength = (value: number | string | undefined) => (typeof value === 'number' ? `${value}px` : value)
-
-export function columnStyle<TData extends RowData>(column: Column<TData>): CSSProperties | undefined {
-  const { width, minWidth, maxWidth } = column.columnDef
-  if (width === undefined && minWidth === undefined && maxWidth === undefined) return undefined
-  return { width: toLength(width), minWidth: toLength(minWidth), maxWidth: toLength(maxWidth) }
 }
 
 export function Table<TData extends RowData>({ localeText, ...props }: TableProps<TData>) {
@@ -118,6 +117,9 @@ function TableContent<TData extends RowData>({
   filterDebounceMs = 200,
   pageSizeOptions,
   enableColumnDragging = false,
+  enableColumnActions = false,
+  stickyHeader = false,
+  maxHeight,
   'aria-label': ariaLabel,
   ...options
 }: Omit<TableProps<TData>, 'localeText'>) {
@@ -126,6 +128,7 @@ function TableContent<TData extends RowData>({
   const columns = table.getVisibleLeafColumns()
   const { rows } = table.getRowModel()
   const [draggedColumnId, setDraggedColumnId] = useState<string>()
+  const fixedLayout = !!options.enableColumnResizing
 
   const renderMessage = (className: string, content: ReactNode) => (
     <tr>
@@ -173,7 +176,8 @@ function TableContent<TData extends RowData>({
               key={cell.id}
               className={cx('tably-td', classNames.td, cellClassName)}
               data-align={align}
-              style={columnStyle(cell.column)}
+              style={leafCellStyle(cell.column, fixedLayout)}
+              {...pinnedAttributes(cell.column)}
             >
               {renderCell === undefined
                 ? formatValue(cell.getValue())
@@ -210,19 +214,28 @@ function TableContent<TData extends RowData>({
       data-striped={striped || undefined}
       data-hover={highlightOnHover || undefined}
       data-bordered={bordered || undefined}
+      data-sticky-header={stickyHeader || undefined}
     >
       {toolbar !== undefined && (
         <div className={cx('tably-toolbar', classNames.toolbar)}>
           {typeof toolbar === 'function' ? toolbar(table) : toolbar}
         </div>
       )}
-      <div className={cx('tably-scroll', classNames.scroll)}>
+      <div className={cx('tably-scroll', classNames.scroll)} style={maxHeight === undefined ? undefined : { maxHeight }}>
         <table
           className={cx('tably-table', classNames.table)}
           aria-label={ariaLabel}
           aria-busy={loading || undefined}
+          style={fixedLayout ? { width: table.getTotalSize(), tableLayout: 'fixed' } : undefined}
         >
           {caption !== undefined && <caption className={cx('tably-caption', classNames.caption)}>{caption}</caption>}
+          {fixedLayout && (
+            <colgroup>
+              {columns.map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
+          )}
           <thead className={cx('tably-thead', classNames.thead)}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className={classNames.headerRow}>
@@ -232,7 +245,8 @@ function TableContent<TData extends RowData>({
                     table={table}
                     header={header}
                     className={classNames.th}
-                    style={header.column.columns.length === 0 ? columnStyle(header.column) : undefined}
+                    style={headerStyle(header, fixedLayout)}
+                    showActions={enableColumnActions}
                     dragging={
                       enableColumnDragging && header.column.columns.length === 0
                         ? {
@@ -255,7 +269,12 @@ function TableContent<TData extends RowData>({
             {showColumnFilters && (
               <tr className={cx('tably-filter-row', classNames.filterRow)}>
                 {columns.map((column) => (
-                  <td key={column.id} className={cx('tably-filter-cell', classNames.filterCell)}>
+                  <td
+                    key={column.id}
+                    className={cx('tably-filter-cell', classNames.filterCell)}
+                    style={leafCellStyle(column, fixedLayout)}
+                    {...pinnedAttributes(column)}
+                  >
                     {column.getCanFilter() &&
                       (column.columnDef.filter === undefined ? (
                         <ColumnFilter table={table} column={column} debounceMs={filterDebounceMs} />

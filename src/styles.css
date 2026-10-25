@@ -205,15 +205,13 @@
   cursor: default;
 }
 
-:where(.tably-columns-menu) {
-  position: relative;
+:where(.tably-popover) {
+  z-index: 10;
+  color: var(--_t-color);
+  font-size: var(--_t-font-size);
 }
 
 :where(.tably-menu) {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 0.25rem);
-  inset-inline-start: 0;
   min-width: 14rem;
   max-height: 20rem;
   overflow-y: auto;
@@ -259,6 +257,28 @@
 
 :where(.tably-menu-order) {
   display: flex;
+}
+
+:where(.tably-actions-menu) {
+  min-width: 10rem;
+}
+
+:where(.tably-menu-action) {
+  display: block;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  border-radius: var(--_t-input-radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.tably-menu-action:hover, .tably-menu-action:focus-visible) {
+  background: var(--_t-row-hover-bg);
+  outline: none;
 }
 
 :where(.tably-menu-actions) {
@@ -336,7 +356,8 @@
 
 :where(.tably-table) {
   width: 100%;
-  border-collapse: collapse;
+  /* Separate borders stay attached to sticky (pinned or header) cells while scrolling. */
+  border-collapse: separate;
   border-spacing: 0;
 }
 
@@ -348,6 +369,104 @@
   text-align: start;
   white-space: nowrap;
   border-bottom: 1px solid var(--_t-border-color);
+}
+
+:where(.tably-th) {
+  position: relative;
+}
+
+:where(.tably-th-content) {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+:where(.tably-th[data-align='center'] .tably-th-content) {
+  justify-content: center;
+}
+
+:where(.tably-th[data-align='end'] .tably-th-content) {
+  justify-content: flex-end;
+}
+
+:where(.tably-column-actions) {
+  margin-inline-start: auto;
+  color: var(--_t-muted-color);
+  opacity: 0;
+}
+
+/* Column action buttons appear on hover or focus, and always on touch screens. */
+:where(.tably-th:hover .tably-column-actions, .tably-column-actions:focus-visible, .tably-column-actions[aria-expanded='true']) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  :where(.tably-column-actions) {
+    opacity: 1;
+  }
+}
+
+:where(.tably-th[data-align='end'] .tably-column-actions) {
+  order: -1;
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+:where(.tably-resize-handle) {
+  position: absolute;
+  z-index: 1;
+  inset-block: 0;
+  inset-inline-end: -4px;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+:where(.tably-resize-handle)::after {
+  content: '';
+  position: absolute;
+  inset-block: 25%;
+  inset-inline-start: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: transparent;
+}
+
+:where(.tably-th:hover .tably-resize-handle)::after {
+  background: var(--_t-border-color);
+}
+
+:where(.tably-resize-handle:hover, .tably-resize-handle:active, .tably-resize-handle:focus-visible)::after {
+  background: var(--_t-spinner-color);
+}
+
+:where(.tably-resize-handle:focus-visible) {
+  outline: none;
+}
+
+/* Pinned columns */
+:where(.tably-td[data-pinned]) {
+  z-index: 1;
+  background: var(--_t-row-bg, var(--_t-bg));
+}
+
+:where(.tably-th[data-pinned], .tably-filter-cell[data-pinned]) {
+  z-index: 2;
+}
+
+:where([data-pinned='left'][data-pinned-edge]) {
+  box-shadow: inset -1px 0 0 var(--_t-border-color), 4px 0 6px -4px rgb(0 0 0 / 0.15);
+}
+
+:where([data-pinned='right'][data-pinned-edge]) {
+  box-shadow: inset 1px 0 0 var(--_t-border-color), -4px 0 6px -4px rgb(0 0 0 / 0.15);
+}
+
+/* <Table stickyHeader maxHeight={…}> */
+:where(.tably-container[data-sticky-header] .tably-thead) {
+  position: sticky;
+  z-index: 3;
+  top: 0;
 }
 
 :where(.tably-th-group) {
@@ -419,12 +538,17 @@
   border-bottom: 0;
 }
 
+/* Rows expose their background as --_t-row-bg so pinned cells can paint the same color. */
+:where(.tably-tr) {
+  background: var(--_t-row-bg, transparent);
+}
+
 :where(.tably-tr-clickable) {
   cursor: pointer;
 }
 
 :where(.tably-tr-clickable:hover) {
-  background: var(--_t-row-hover-bg);
+  --_t-row-bg: var(--_t-row-hover-bg);
 }
 
 :where(.tably-tr-clickable:focus-visible) {
@@ -450,12 +574,12 @@
 
 /* <Table striped> */
 :where(.tably-container[data-striped] .tably-tbody .tably-tr:nth-child(even)) {
-  background: var(--_t-stripe-bg);
+  --_t-row-bg: var(--_t-stripe-bg);
 }
 
 /* <Table highlightOnHover> */
 :where(.tably-container[data-hover] .tably-tbody .tably-tr:hover) {
-  background: var(--_t-row-hover-bg);
+  --_t-row-bg: var(--_t-row-hover-bg);
 }
 
 /* <Table bordered> */
