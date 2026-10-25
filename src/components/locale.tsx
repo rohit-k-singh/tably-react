@@ -20,6 +20,9 @@ export interface TableLocaleText {
   filterAll: string
   filterTrue: string
   filterFalse: string
+  /** Multi-select filter button text, e.g. "2 selected". */
+  filterSelectedCount: (count: number) => string
+  clearFilter: string
   rowsPerPage: string
   /** Visible row range, e.g. "11–20 of 57". `total` is `-1` when unknown. */
   pageRange: (from: number, to: number, total: number) => string
@@ -59,6 +62,7 @@ export interface TableLocaleText {
   ungroupColumn: string
   /** Number of rows in a group, shown after its value. */
   groupRowCount: (count: number) => string
+  exportCsv: string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -76,6 +80,8 @@ export const defaultLocaleText: TableLocaleText = {
   filterAll: 'All',
   filterTrue: 'Yes',
   filterFalse: 'No',
+  filterSelectedCount: (count) => `${count} selected`,
+  clearFilter: 'Clear',
   rowsPerPage: 'Rows per page',
   pageRange: (from, to, total) => (total === -1 ? `${from}–${to}` : `${from}–${to} of ${total}`),
   pageStatus: (page, pageCount) => (pageCount === -1 ? `Page ${page}` : `Page ${page} of ${pageCount}`),
@@ -108,7 +114,8 @@ export const defaultLocaleText: TableLocaleText = {
   collapseAllRows: 'Collapse all rows',
   groupByColumn: 'Group by this column',
   ungroupColumn: 'Ungroup',
-  groupRowCount: (count) => `(${count})`
+  groupRowCount: (count) => `(${count})`,
+  exportCsv: 'Export CSV'
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

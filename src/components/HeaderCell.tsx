@@ -20,7 +20,8 @@ export function HeaderCell<TData extends RowData>({
   style,
   dragging,
   showActions,
-  leading
+  leading,
+  gridProps
 }: {
   table: TableInstance<TData>
   header: Header<TData>
@@ -30,6 +31,8 @@ export function HeaderCell<TData extends RowData>({
   showActions?: boolean
   /** Content before the header label, e.g. an expand-all button. */
   leading?: ReactNode
+  /** Keyboard grid navigation attributes. */
+  gridProps?: Record<string, unknown>
 }) {
   const { column } = header
   const { header: content, headerClassName, align } = column.columnDef
@@ -85,6 +88,7 @@ export function HeaderCell<TData extends RowData>({
       style={style}
       {...headerPinnedAttributes(header)}
       {...dragProps}
+      {...gridProps}
     >
       <div className="tably-th-content">
         {leading}

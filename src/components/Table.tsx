@@ -1,4 +1,13 @@
-import { Fragment, useCallback, useId, useMemo, useRef, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { DisplayColumnDef, Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
@@ -112,6 +121,14 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   estimateRowHeight?: number
   /** Rows rendered beyond the visible ones with `enableVirtualization`. Defaults to 10. */
   overscan?: number
+  /**
+   * Keyboard navigation between cells (WAI-ARIA grid): the table is one Tab
+   * stop; arrow keys, Home / End, Ctrl+Home / End and PageUp / PageDown move
+   * between header and body cells; Enter or F2 sorts a header or focuses the
+   * controls in a cell (Escape returns to the cell); Space toggles row
+   * selection; ArrowRight / ArrowLeft expand and collapse tree and group rows.
+   */
+  enableKeyboardNavigation?: boolean
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -157,6 +174,7 @@ function TableContent<TData extends RowData>({
   enableVirtualization = false,
   estimateRowHeight,
   overscan = 10,
+  enableKeyboardNavigation = false,
   'aria-label': ariaLabel,
   ...tableOptions
 }: Omit<TableProps<TData>, 'localeText'>) {
@@ -212,6 +230,135 @@ function TableContent<TData extends RowData>({
     initialViewportHeight: typeof maxHeight === 'number' ? maxHeight : DEFAULT_VIRTUAL_HEIGHT
   })
   const scrollHeight = maxHeight ?? (enableVirtualization ? DEFAULT_VIRTUAL_HEIGHT : undefined)
+
+  // Keyboard grid navigation: row -1 is the header (leaf column headers), then body rows.
+  const tableRef = useRef<HTMLTableElement>(null)
+  const [activeCell, setActiveCell] = useState({ row: -1, col: 0 })
+  const pendingFocus = useRef<{ row: number; col: number } | null>(null)
+  const gridRow = Math.min(activeCell.row, rows.length - 1)
+  const gridCol = Math.min(activeCell.col, columns.length - 1)
+  const gridCellProps = (row: number, col: number) =>
+    enableKeyboardNavigation
+      ? { 'data-grid-row': row, 'data-grid-col': col, tabIndex: row === gridRow && col === gridCol ? 0 : -1 }
+      : undefined
+
+  const findCell = (row: number, col: number) =>
+    tableRef.current?.querySelector<HTMLElement>(`[data-grid-row="${row}"][data-grid-col="${col}"]`) ?? null
+
+  const focusCell = (row: number, col: number) => {
+    const target = {
+      row: Math.max(-1, Math.min(row, rows.length - 1)),
+      col: Math.max(0, Math.min(col, columns.length - 1))
+    }
+    setActiveCell(target)
+    const element = findCell(target.row, target.col)
+    if (element) element.focus()
+    else if (enableVirtualization && target.row >= 0) {
+      pendingFocus.current = target
+      virtualizer.scrollToIndex(target.row)
+    }
+  }
+
+  // One Tab stop: controls inside cells leave the Tab order and are reached with Enter / F2.
+  useIsomorphicLayoutEffect(() => {
+    if (!enableKeyboardNavigation) return
+    for (const control of tableRef.current?.querySelectorAll<HTMLElement>(
+      `[data-grid-row] :is(${FOCUSABLE_SELECTOR})`
+    ) ?? []) {
+      if (control.tabIndex !== -1) control.tabIndex = -1
+    }
+  })
+
+  // Focus a cell that was not rendered yet (virtualization) once it is.
+  useEffect(() => {
+    const pending = pendingFocus.current
+    if (!pending) return
+    const element = findCell(pending.row, pending.col)
+    if (element) {
+      pendingFocus.current = null
+      element.focus()
+    }
+  })
+
+  const onGridKeyDown = (event: KeyboardEvent<HTMLTableElement>) => {
+    const target = event.target as HTMLElement
+    const cell = target.closest<HTMLElement>('[data-grid-row]')
+    if (!cell) return
+    const row = Number(cell.dataset.gridRow)
+    const col = Number(cell.dataset.gridCol)
+
+    if (target !== cell) {
+      // Inside a cell's controls: Escape returns to the cell, Tab cycles through the cell's controls.
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        cell.focus()
+      } else if (event.key === 'Tab') {
+        const controls = Array.from(cell.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+        const index = controls.indexOf(target)
+        if (controls.length > 1 && index !== -1) {
+          event.preventDefault()
+          controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length].focus()
+        }
+      }
+      return
+    }
+
+    const page = Math.max(1, Math.floor((scrollRef.current?.clientHeight || 400) / rowHeight) - 1)
+    const bodyRow = row >= 0 ? rows[row] : undefined
+    const toggle = bodyRow?.getCanExpand() && cell.querySelector('.tably-expand-button')
+
+    switch (event.key) {
+      case 'ArrowUp':
+        focusCell(row - 1, col)
+        break
+      case 'ArrowDown':
+        if (row === -1 && event.altKey) {
+          cell.querySelector<HTMLElement>('.tably-column-actions')?.click()
+          break
+        }
+        focusCell(row + 1, col)
+        break
+      case 'ArrowLeft':
+        if (toggle && bodyRow?.getIsExpanded()) bodyRow.toggleExpanded(false)
+        else focusCell(row, col - 1)
+        break
+      case 'ArrowRight':
+        if (toggle && !bodyRow?.getIsExpanded()) bodyRow?.toggleExpanded(true)
+        else focusCell(row, col + 1)
+        break
+      case 'Home':
+        focusCell(event.ctrlKey || event.metaKey ? -1 : row, 0)
+        break
+      case 'End':
+        focusCell(event.ctrlKey || event.metaKey ? rows.length - 1 : row, columns.length - 1)
+        break
+      case 'PageUp':
+        focusCell(Math.max(row === -1 ? -1 : 0, row - page), col)
+        break
+      case 'PageDown':
+        focusCell(row + page, col)
+        break
+      case 'Enter':
+      case 'F2': {
+        const sortButton = row === -1 ? cell.querySelector<HTMLElement>('.tably-sort-button') : null
+        const control = cell.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+        if (sortButton && event.key === 'Enter') sortButton.click()
+        else if (control) control.focus()
+        else if (bodyRow && event.key === 'Enter') {
+          if (selectRowOnClick) bodyRow.toggleSelected()
+          onRowClick?.(bodyRow.original, bodyRow)
+        }
+        break
+      }
+      case ' ':
+        if (!bodyRow || !selectable) return
+        bodyRow.toggleSelected()
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+  }
   const headerRowCount = table.getHeaderGroups().length + (showColumnFilters ? 1 : 0)
   const [draggedColumnId, setDraggedColumnId] = useState<string>()
   const fixedLayout = !!options.enableColumnResizing
@@ -266,10 +413,10 @@ function TableContent<TData extends RowData>({
           extraClassName
         )}
         onClick={clickable ? handleClick : onClick}
-        onKeyDown={clickable ? handleKeyDown : onKeyDown}
-        tabIndex={clickable ? 0 : rowProps.tabIndex}
+        onKeyDown={clickable && !enableKeyboardNavigation ? handleKeyDown : onKeyDown}
+        tabIndex={clickable && !enableKeyboardNavigation ? 0 : rowProps.tabIndex}
       >
-        {row.getVisibleCells().map((cell) => {
+        {row.getVisibleCells().map((cell, cellIndex) => {
           const { cell: renderCell, className: cellClassName, align } = cell.column.columnDef
           const isUtilityColumn = cell.column.id === EXPAND_COLUMN_ID || cell.column.id === SELECTION_COLUMN_ID
           const renderValue = () =>
@@ -305,6 +452,7 @@ function TableContent<TData extends RowData>({
               data-align={align}
               style={isTreeCell ? { ...style, ['--tably-depth' as string]: row.depth } : style}
               {...pinnedAttributes(cell.column)}
+              {...gridCellProps(index, cellIndex)}
             >
               {isTreeCell ? (
                 <div className="tably-tree-content">
@@ -392,6 +540,17 @@ function TableContent<TData extends RowData>({
         style={scrollHeight === undefined ? undefined : { maxHeight: scrollHeight }}
       >
         <table
+          ref={tableRef}
+          role={enableKeyboardNavigation ? 'grid' : undefined}
+          onKeyDown={enableKeyboardNavigation ? onGridKeyDown : undefined}
+          onFocus={
+            enableKeyboardNavigation
+              ? (event) => {
+                  const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-grid-row]')
+                  if (cell) setActiveCell({ row: Number(cell.dataset.gridRow), col: Number(cell.dataset.gridCol) })
+                }
+              : undefined
+          }
           className={cx('tably-table', classNames.table)}
           aria-label={ariaLabel}
           aria-busy={loading || undefined}
@@ -421,6 +580,11 @@ function TableContent<TData extends RowData>({
                     className={classNames.th}
                     style={headerStyle(header, fixedLayout)}
                     showActions={enableColumnActions}
+                    gridProps={
+                      header.column.columns.length === 0
+                        ? gridCellProps(-1, columns.indexOf(header.column))
+                        : undefined
+                    }
                     leading={
                       (header.column.id === EXPAND_COLUMN_ID || header.column.id === treeColumnId) &&
                       table.getCanSomeRowsExpand() ? (
@@ -507,6 +671,11 @@ function TableContent<TData extends RowData>({
 }
 
 const EXPAND_COLUMN_ID = 'tably-expand'
+
+const FOCUSABLE_SELECTOR =
+  'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([data-grid-row])'
+
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 /** Estimated row heights per density, before rows are measured. */
 const DEFAULT_ROW_HEIGHTS = { compact: 34, standard: 46, comfortable: 54 }

@@ -706,6 +706,12 @@
   bottom: 0;
 }
 
+/* <Table enableKeyboardNavigation> */
+:where(.tably-table[role='grid'] [data-grid-row]:focus-visible) {
+  outline: var(--_t-focus-ring);
+  outline-offset: -2px;
+}
+
 :where(.tably-caption) {
   padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
   caption-side: top;

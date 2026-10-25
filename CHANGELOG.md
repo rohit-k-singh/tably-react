@@ -18,6 +18,9 @@
 - Grouping by one or more columns with aggregation (`aggregationFn`, `aggregatedCell`), grouping from the column
   actions menu, column footers (`footer`) and `column.getAggregatedValue()`.
 - Row virtualization (`enableVirtualization`) with measured row heights, and the `useVirtualizer` hook.
+- Keyboard grid navigation (`enableKeyboardNavigation`), faceted values (`getFacetedUniqueValues`,
+  `getFacetedMinMaxValues`) with `filterVariant` select / multi-select controls, and CSV export (`getCsv`,
+  `downloadCsv`, `TableExportButton`).
 - Striped rows now use a `data-stripe` attribute instead of `:nth-child(even)`, so stripes follow the data order
   with detail rows and virtualization.
 
