@@ -1,0 +1,52 @@
+import { createColumns } from './columns'
+import { createRow, createRowModel } from './rows'
+import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
+import { memo } from './utils'
+
+export function getDefaultTableState(): TableState {
+  return {}
+}
+
+/**
+ * Creates a framework-agnostic table instance. Call `setOptions` with the
+ * latest options (including the current state) whenever they change.
+ */
+export function createTable<TData extends RowData>(
+  initialOptions: ResolvedTableOptions<TData>
+): TableInstance<TData> {
+  const table = {
+    options: initialOptions,
+    initialState: { ...getDefaultTableState(), ...initialOptions.initialState }
+  } as TableInstance<TData>
+
+  table.setOptions = (options) => {
+    table.options = options
+  }
+  table.getState = () => table.options.state
+
+  table.getAllColumns = memo(
+    () => [table.options.columns],
+    (columnDefs) => createColumns(columnDefs)
+  )
+
+  const getColumnsById = memo(
+    () => [table.getAllColumns()],
+    (columns) => new Map(columns.map((column) => [column.id, column]))
+  )
+  table.getColumn = (columnId) => getColumnsById().get(columnId)
+
+  table.getCoreRowModel = memo(
+    () => [table.options.data, table.getAllColumns()],
+    (data, _columns) => {
+      const getRowId = table.options.getRowId
+      const rows = data.map((original, index) =>
+        createRow(table, getRowId ? getRowId(original, index) : String(index), original, index)
+      )
+      return createRowModel(rows)
+    }
+  )
+
+  table.getRowModel = () => table.getCoreRowModel()
+
+  return table
+}

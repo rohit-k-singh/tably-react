@@ -1,0 +1,204 @@
+import type { ComponentClass, ExoticComponent, ReactNode } from 'react'
+
+/** Any object can be a table row. */
+export type RowData = object
+
+/** A new value, or a function deriving it from the previous value. */
+export type Updater<T> = T | ((previous: T) => T)
+
+type Primitive = string | number | boolean | bigint | symbol | null | undefined
+type Leaf = Primitive | Date | RegExp | ((...args: any[]) => unknown) | ReadonlyArray<unknown>
+type PrevDepth = [never, 0, 1, 2, 3]
+
+/**
+ * Dot-separated paths to every property of `T`, up to four levels deep,
+ * e.g. `'name' | 'address' | 'address.city'`. Arrays, dates and functions are leaves.
+ */
+export type DeepKeys<T, Depth extends number = 4> = [Depth] extends [never]
+  ? never
+  : T extends Leaf
+    ? never
+    : {
+        [K in keyof T & (string | number)]: NonNullable<T[K]> extends Leaf
+          ? `${K}`
+          : `${K}` | `${K}.${DeepKeys<NonNullable<T[K]>, PrevDepth[Depth]>}`
+      }[keyof T & (string | number)]
+
+/**
+ * The type found at path `P` of `T`. Includes `undefined` / `null` when an
+ * intermediate property along the path is optional or nullable.
+ */
+export type DeepValue<T, P> = P extends keyof T
+  ? T[P]
+  : P extends `${infer K}.${infer Rest}`
+    ? K extends keyof T
+      ? DeepValue<NonNullable<T[K]>, Rest> | Extract<T[K], null | undefined>
+      : never
+    : never
+
+/**
+ * Free-form metadata attached to a column definition. Extend it with
+ * declaration merging to type your own fields:
+ *
+ * ```ts
+ * declare module 'tably-react' {
+ *   interface ColumnMeta<TData, TValue> { tooltip?: string }
+ * }
+ * ```
+ */
+// @ts-expect-error TS6205: the type parameters are only used by declaration merging.
+export interface ColumnMeta<TData, TValue> {}
+
+export interface HeaderContext<TData extends RowData> {
+  table: TableInstance<TData>
+  column: Column<TData>
+}
+
+export interface CellContext<TData extends RowData, TValue> {
+  table: TableInstance<TData>
+  column: Column<TData>
+  row: Row<TData>
+  cell: Cell<TData>
+  /** The value returned by the column's accessor for this row. */
+  getValue: () => TValue
+}
+
+/**
+ * Static content, a function rendering content from a context, or a
+ * component (including `memo` / `forwardRef`) receiving the context as props.
+ */
+export type Renderable<TContext> =
+  | ReactNode
+  | ((context: TContext) => ReactNode)
+  | ComponentClass<TContext>
+  | ExoticComponent<TContext>
+
+export interface ColumnDefBase<TData extends RowData, TValue> {
+  /** Header cell content. Defaults to the column id. */
+  header?: Renderable<HeaderContext<TData>>
+  /** Body cell content. Defaults to the formatted cell value. */
+  cell?: Renderable<CellContext<TData, TValue>>
+  /** Class name added to every body cell of the column. */
+  className?: string
+  /** Class name added to the header cell of the column. */
+  headerClassName?: string
+  meta?: ColumnMeta<TData, TValue>
+}
+
+export interface AccessorKeyColumnDef<TData extends RowData, TKey extends DeepKeys<TData>>
+  extends ColumnDefBase<TData, DeepValue<TData, TKey>> {
+  /** Path of the row property displayed in the column, e.g. `'address.city'`. */
+  accessorKey: TKey
+  /** Unique column id. Defaults to `accessorKey`. */
+  id?: string
+  accessorFn?: never
+}
+
+export interface AccessorFnColumnDef<TData extends RowData, TValue>
+  extends ColumnDefBase<TData, TValue> {
+  /** Derives the column value from a row. */
+  accessorFn: (row: TData, index: number) => TValue
+  /** Unique column id. */
+  id: string
+  accessorKey?: never
+}
+
+/** A column without a value, e.g. for row actions. */
+export interface DisplayColumnDef<TData extends RowData> extends ColumnDefBase<TData, unknown> {
+  /** Unique column id. */
+  id: string
+  accessorKey?: never
+  accessorFn?: never
+}
+
+type AccessorKeyColumnDefs<TData extends RowData> = {
+  [K in DeepKeys<TData>]: AccessorKeyColumnDef<TData, K>
+}[DeepKeys<TData>]
+
+/**
+ * A column definition. With `accessorKey`, the cell's `getValue()` is typed
+ * from the row property; for typed `accessorFn` columns use `createColumnHelper`.
+ */
+export type ColumnDef<TData extends RowData> =
+  | AccessorKeyColumnDefs<TData>
+  | AccessorFnColumnDef<TData, any>
+  | DisplayColumnDef<TData>
+
+/** Any column definition, with the per-column value type erased. */
+export interface AnyColumnDef<TData extends RowData> extends ColumnDefBase<TData, any> {
+  id?: string
+  accessorKey?: string
+  accessorFn?: (row: TData, index: number) => unknown
+}
+
+export interface Column<TData extends RowData> {
+  id: string
+  /** The definition this column was created from. */
+  columnDef: AnyColumnDef<TData>
+  /** Position of the column in the `columns` option. */
+  index: number
+  /** Reads this column's value from a row. Undefined for display columns. */
+  accessorFn?: (row: TData, index: number) => unknown
+}
+
+export interface Row<TData extends RowData> {
+  /** Unique row id from `getRowId`; the row index by default. */
+  id: string
+  /** Position of the row in the `data` option. */
+  index: number
+  /** The row object passed in `data`. */
+  original: TData
+  /** Value of the given column for this row. Cached after the first read. */
+  getValue: <TValue = unknown>(columnId: string) => TValue
+  /** One cell per column. */
+  getCells: () => Cell<TData>[]
+}
+
+export interface Cell<TData extends RowData> {
+  /** `${row.id}_${column.id}` */
+  id: string
+  row: Row<TData>
+  column: Column<TData>
+  getValue: <TValue = unknown>() => TValue
+  getContext: () => CellContext<TData, unknown>
+}
+
+export interface RowModel<TData extends RowData> {
+  rows: Row<TData>[]
+  rowsById: Record<string, Row<TData>>
+}
+
+export interface TableState {}
+
+export interface TableOptions<TData extends RowData> {
+  /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
+  data: TData[]
+  /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
+  columns: ColumnDef<TData>[]
+  /** Returns a unique, stable id for a row. Defaults to the row index. */
+  getRowId?: (row: TData, index: number) => string
+  /** Controlled state. Any slice set here overrides the internal state. */
+  state?: Partial<TableState>
+  /** Starting values for uncontrolled state. */
+  initialState?: Partial<TableState>
+}
+
+export interface ResolvedTableOptions<TData extends RowData> extends TableOptions<TData> {
+  state: TableState
+  /** Receives every state change; used by framework adapters to store uncontrolled state. */
+  onStateChange: (updater: Updater<TableState>) => void
+}
+
+export interface TableInstance<TData extends RowData> {
+  options: ResolvedTableOptions<TData>
+  setOptions: (options: ResolvedTableOptions<TData>) => void
+  getState: () => TableState
+  /** Initial state, including `initialState` overrides. */
+  initialState: TableState
+  getAllColumns: () => Column<TData>[]
+  getColumn: (columnId: string) => Column<TData> | undefined
+  /** Every row in `data`, before any processing. */
+  getCoreRowModel: () => RowModel<TData>
+  /** The rows to render, after all processing. */
+  getRowModel: () => RowModel<TData>
+}
