@@ -25,12 +25,13 @@ describe('column actions menu', () => {
       'Sort descending',
       'Pin to left',
       'Pin to right',
+      'Group by this column',
       'Hide column'
     ])
     expect(items[0]).toHaveFocus()
 
     fireEvent.keyDown(menu, { key: 'ArrowUp' })
-    expect(items[4]).toHaveFocus()
+    expect(items[5]).toHaveFocus()
     fireEvent.keyDown(menu, { key: 'Home' })
     fireEvent.keyDown(menu, { key: 'ArrowDown' })
     expect(items[1]).toHaveFocus()

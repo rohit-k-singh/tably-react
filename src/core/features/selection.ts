@@ -58,6 +58,21 @@ export function createSelectionRowApi<TData extends RowData>(
   table: TableInstance<TData>,
   row: Row<TData>
 ): SelectionRow {
+  // Selected / selectable counts of the sub rows; recomputed only when the selection changes.
+  const getSubRowCounts = memo(
+    () => [table.getState().rowSelection, row.subRows, table.options.enableRowSelection],
+    (_rowSelection, _subRows, _enableRowSelection) => {
+      let selectable = 0
+      let selected = 0
+      for (const leaf of row.getLeafRows()) {
+        if (!leaf.getCanSelect()) continue
+        selectable++
+        if (leaf.getIsSelected()) selected++
+      }
+      return { selectable, selected }
+    }
+  )
+
   const api: SelectionRow = {
     getCanSelect: () => {
       const { enableRowSelection = false } = table.options
@@ -65,20 +80,20 @@ export function createSelectionRowApi<TData extends RowData>(
     },
     getIsSelected: () => !!table.getState().rowSelection[row.id],
     getIsSomeSelected: () => {
-      const leaves = row.getLeafRows().filter((leaf) => leaf.getCanSelect())
-      const selected = leaves.filter((leaf) => leaf.getIsSelected()).length
-      return selected > 0 && selected < leaves.length
+      const { selectable, selected } = getSubRowCounts()
+      return selected > 0 && selected < selectable
     },
     getIsAllSubRowsSelected: () => {
-      const leaves = row.getLeafRows().filter((leaf) => leaf.getCanSelect())
-      return leaves.length > 0 && leaves.every((leaf) => leaf.getIsSelected())
+      const { selectable, selected } = getSubRowCounts()
+      return selectable > 0 && selected === selectable
     },
     toggleSelected: (selected) => {
       const next = selected ?? !api.getIsSelected()
       if (next && !api.getCanSelect()) return
       const multi = table.options.enableMultiRowSelection ?? true
       const withSubRows = multi && (table.options.enableSubRowSelection ?? true)
-      const rows = withSubRows ? [row, ...row.getLeafRows()] : [row]
+      // Group rows are not data rows; only the rows they contain are stored.
+      const rows = (withSubRows ? [row, ...row.getLeafRows()] : [row]).filter((r) => !r.getIsGrouped())
 
       table.setRowSelection((previous) => {
         if (next && !multi) return { [row.id]: true }

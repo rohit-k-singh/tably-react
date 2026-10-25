@@ -6,6 +6,7 @@ import {
 } from './features/columns'
 import { createExpandingTableApi } from './features/expanding'
 import { createFilteringTableApi } from './features/filtering'
+import { createGroupingTableApi } from './features/grouping'
 import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
 import { createPinningTableApi, getDefaultColumnPinning } from './features/pinning'
 import { createSelectionTableApi } from './features/selection'
@@ -26,7 +27,8 @@ export function getDefaultTableState(): TableState {
     columnSizing: {},
     columnPinning: getDefaultColumnPinning(),
     rowSelection: {},
-    expanded: {}
+    expanded: {},
+    grouping: []
   }
 }
 
@@ -89,6 +91,10 @@ export function createTable<TData extends RowData>(
     () => [table.getVisibleLeafColumns()],
     (leaves) => buildHeaderGroups(table, leaves)
   )
+  table.getFooterGroups = memo(
+    () => [table.getHeaderGroups()],
+    (headerGroups) => [...headerGroups].reverse()
+  )
 
   table.getCoreRowModel = memo(
     () => [table.options.data, table.getAllColumns()],
@@ -108,7 +114,8 @@ export function createTable<TData extends RowData>(
   )
 
   Object.assign(table, createFilteringTableApi(table, table.getCoreRowModel))
-  Object.assign(table, createSortingTableApi(table, table.getFilteredRowModel))
+  Object.assign(table, createGroupingTableApi(table, table.getFilteredRowModel))
+  Object.assign(table, createSortingTableApi(table, table.getGroupedRowModel))
   Object.assign(table, createPaginationTableApi(table, table.getSortedRowModel))
 
   Object.assign(table, createExpandingTableApi(table, table.getPaginationRowModel))

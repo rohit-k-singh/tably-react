@@ -53,7 +53,7 @@ export interface ColumnOrderInstance<TData extends RowData> {
   setColumnOrder: (updater: Updater<ColumnOrderState>) => void
   /** Resets to the initial order, or to definition order with `true`. */
   resetColumnOrder: (defaultState?: boolean) => void
-  /** Non-group columns (visible or not) in display order. */
+  /** Non-group columns (visible or not) in display order, after `columnOrder` and `groupedColumnMode`. */
   getOrderedLeafColumns: () => Column<TData>[]
   /** Moves a column to `toIndex` in the display order of all leaf columns. */
   moveColumn: (columnId: string, toIndex: number) => void
@@ -118,8 +118,22 @@ export function createColumnOrderTableApi<TData extends RowData>(
     },
     resetColumnOrder: (defaultState) => api.setColumnOrder(defaultState ? [] : table.initialState.columnOrder),
     getOrderedLeafColumns: memo(
-      () => [table.getAllLeafColumns(), table.getState().columnOrder],
-      (leaves, columnOrder) => orderColumns(leaves, columnOrder)
+      () => [
+        table.getAllLeafColumns(),
+        table.getState().columnOrder,
+        table.getState().grouping,
+        table.options.groupedColumnMode ?? 'reorder'
+      ],
+      (leaves, columnOrder, grouping, groupedColumnMode) => {
+        const ordered = orderColumns(leaves, columnOrder)
+        if (grouping.length === 0 || groupedColumnMode === false) return ordered
+        const grouped = grouping
+          .map((id) => ordered.find((column) => column.id === id))
+          .filter((column): column is Column<TData> => column !== undefined)
+        const rest = ordered.filter((column) => !grouping.includes(column.id))
+        // 'reorder' moves grouped columns to the start; 'remove' leaves them out.
+        return groupedColumnMode === 'remove' ? rest : [...grouped, ...rest]
+      }
     ),
     moveColumn: (columnId, toIndex) => {
       const ids = api.getOrderedLeafColumns().map((column) => column.id)

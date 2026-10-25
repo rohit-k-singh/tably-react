@@ -55,9 +55,23 @@ const columns: ColumnDef<Person>[] = [
   {
     header: 'Person',
     columns: [
-      { accessorKey: 'name', header: 'Name', minWidth: 160 },
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        minWidth: 160,
+        aggregationFn: 'count',
+        footer: ({ table }) => `${table.getFilteredRowModel().rows.length} people`
+      },
       { accessorKey: 'email', header: 'Email', width: 260 },
-      { accessorKey: 'age', header: 'Age', align: 'end', width: 140 }
+      {
+        accessorKey: 'age',
+        header: 'Age',
+        align: 'end',
+        width: 140,
+        aggregationFn: 'mean',
+        aggregatedCell: ({ getValue }) => `avg ${Math.round(getValue() as number)}`,
+        footer: ({ column }) => `avg ${Math.round(column.getAggregatedValue() as number)}`
+      }
     ]
   },
   {
@@ -65,7 +79,13 @@ const columns: ColumnDef<Person>[] = [
     columns: [
       { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
       { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
-      { accessorKey: 'active', header: 'Active', cell: ({ getValue }) => (getValue() ? 'Yes' : 'No') }
+      {
+        accessorKey: 'active',
+        header: 'Active',
+        cell: ({ getValue }) => (getValue() ? 'Yes' : 'No'),
+        aggregationFn: (columnId, rows) => rows.filter((row) => row.getValue(columnId)).length,
+        aggregatedCell: ({ getValue }) => `${getValue()} active`
+      }
     ]
   },
   { accessorKey: 'address.city', header: 'City' },

@@ -29,6 +29,13 @@ export function ColumnActionsMenu<TData extends RowData>({ column }: { column: C
     if (pinned !== 'right') items.push({ label: text.pinRight, onSelect: () => column.pin('right') })
     if (pinned) items.push({ label: text.unpin, onSelect: () => column.pin(false) })
   }
+  if (column.getCanGroup() || column.getIsGrouped()) {
+    items.push(
+      column.getIsGrouped()
+        ? { label: text.ungroupColumn, onSelect: () => column.toggleGrouping() }
+        : { label: text.groupByColumn, onSelect: () => column.toggleGrouping() }
+    )
+  }
   if (column.getCanResize() && column.getIsResized()) {
     items.push({ label: text.resetWidth, onSelect: () => column.resetSize() })
   }
