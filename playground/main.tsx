@@ -44,6 +44,7 @@ function makePeople(count: number): Person[] {
 }
 
 const people = makePeople(25)
+const manyPeople = { '10000': makePeople(10_000), '100000': makePeople(100_000) }
 
 /** Every fifth person manages the next four. */
 const team: Person[] = people
@@ -136,6 +137,8 @@ function App() {
   const [density, setDensity] = useState<NonNullable<TableProps<Person>['density']>>('standard')
   const [selected, setSelected] = useState<Person | null>(null)
   const [mode, setMode] = useState<'flat' | 'tree' | 'details'>('flat')
+  const [size, setSize] = useState<'25' | '10000' | '100000'>('25')
+  const large = size !== '25'
 
   return (
     <main style={{ maxWidth: 1200, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
@@ -149,6 +152,7 @@ function App() {
         <Toggle label="Drag headers" value={dragging} onChange={setDragging} />
         <Toggle label="Resizable" value={resizing} onChange={setResizing} />
         <Toggle label="Sticky header" value={sticky} onChange={setSticky} />
+        <Choice label="Size" value={size} options={['25', '10000', '100000']} onChange={setSize} />
         <Choice label="Rows" value={mode} options={['flat', 'tree', 'details']} onChange={setMode} />
         <Choice label="Theme" value={theme} options={['light', 'dark', 'auto']} onChange={setTheme} />
         <Choice
@@ -160,7 +164,9 @@ function App() {
       </Controls>
       <Table
         caption="Team directory"
-        data={empty ? [] : mode === 'tree' ? team : people}
+        data={empty ? [] : mode === 'tree' ? team : large ? manyPeople[size] : people}
+        enableVirtualization={large}
+        enablePagination={!large}
         getSubRows={mode === 'tree' ? (person) => person.reports : undefined}
         renderDetailPanel={
           mode === 'details'
@@ -184,7 +190,7 @@ function App() {
         enableColumnResizing={resizing}
         enableColumnActions
         stickyHeader={sticky}
-        maxHeight={sticky ? 420 : undefined}
+        maxHeight={sticky || large ? 420 : undefined}
         enableRowSelection
         initialState={{
           pagination: { pageIndex: 0, pageSize: 10 },
@@ -195,7 +201,6 @@ function App() {
         striped={striped}
         bordered={bordered}
         highlightOnHover
-        enablePagination
         pageSizeOptions={[5, 10, 25]}
         toolbar={(table) => (
           <>

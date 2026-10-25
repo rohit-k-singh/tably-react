@@ -14,6 +14,8 @@ export type { ColumnFilterProps } from './components/ColumnFilter'
 
 export { useTable } from './react/useTable'
 export { flexRender } from './react/flexRender'
+export { useVirtualizer } from './react/useVirtualizer'
+export type { VirtualItem, Virtualizer, VirtualizerOptions } from './react/useVirtualizer'
 
 export { createTable, getDefaultTableState } from './core/table'
 export type {

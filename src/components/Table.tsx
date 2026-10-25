@@ -1,7 +1,8 @@
-import { Fragment, useId, useMemo, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useCallback, useId, useMemo, useRef, useState, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { DisplayColumnDef, Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
+import { useVirtualizer } from '../react/useVirtualizer'
 import { ColumnFilter } from './ColumnFilter'
 import { cx } from './cx'
 import { headerStyle, leafCellStyle, pinnedAttributes } from './cellStyle'
@@ -98,6 +99,16 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
    * Adds an expand button column; every row can expand unless `getRowCanExpand` says otherwise.
    */
   renderDetailPanel?: (row: Row<TData>) => ReactNode
+  /**
+   * Renders only the rows in view, for large row counts. The table scrolls
+   * within `maxHeight` (600px by default). Rows may have different heights;
+   * they are measured as they render.
+   */
+  enableVirtualization?: boolean
+  /** Row height used before a row is measured. Defaults to a value matching `density`. */
+  estimateRowHeight?: number
+  /** Rows rendered beyond the visible ones with `enableVirtualization`. Defaults to 10. */
+  overscan?: number
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -140,6 +151,9 @@ function TableContent<TData extends RowData>({
   hideSelectionColumn = false,
   selectRowOnClick = false,
   renderDetailPanel,
+  enableVirtualization = false,
+  estimateRowHeight,
+  overscan = 10,
   'aria-label': ariaLabel,
   ...tableOptions
 }: Omit<TableProps<TData>, 'localeText'>) {
@@ -169,6 +183,32 @@ function TableContent<TData extends RowData>({
   const text = useLocaleText()
   const columns = table.getVisibleLeafColumns()
   const { rows } = table.getRowModel()
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const tbodyRef = useRef<HTMLTableSectionElement>(null)
+  const rowHeight = estimateRowHeight ?? DEFAULT_ROW_HEIGHTS[density ?? 'standard']
+  const estimateSize = useCallback(() => rowHeight, [rowHeight])
+  const getItemKey = useCallback((index: number) => rows[index]?.id ?? index, [rows])
+  const virtualizer = useVirtualizer({
+    enabled: enableVirtualization,
+    count: rows.length,
+    estimateSize,
+    getItemKey,
+    overscan,
+    getScrollElement: () => scrollRef.current,
+    // Height of everything above the first row inside the scroll area (caption, header rows).
+    // Offsets do not change with the scroll position.
+    getScrollMargin: () => {
+      const scroll = scrollRef.current
+      const tbody = tbodyRef.current
+      const tableElement = tbody?.parentElement
+      if (!scroll || !tbody || !tableElement) return 0
+      return tbody.offsetTop + tableElement.offsetTop - scroll.offsetTop
+    },
+    initialViewportHeight: typeof maxHeight === 'number' ? maxHeight : DEFAULT_VIRTUAL_HEIGHT
+  })
+  const scrollHeight = maxHeight ?? (enableVirtualization ? DEFAULT_VIRTUAL_HEIGHT : undefined)
+  const headerRowCount = table.getHeaderGroups().length + (showColumnFilters ? 1 : 0)
   const [draggedColumnId, setDraggedColumnId] = useState<string>()
   const fixedLayout = !!options.enableColumnResizing
 
@@ -180,7 +220,7 @@ function TableContent<TData extends RowData>({
     </tr>
   )
 
-  const renderRow = (row: Row<TData>) => {
+  const renderRow = (row: Row<TData>, index: number) => {
     const { className: extraClassName, onClick, onKeyDown, ...rowProps } = getRowProps?.(row) ?? {}
 
     const clickable = !!onRowClick || selectRowOnClick
@@ -208,6 +248,10 @@ function TableContent<TData extends RowData>({
         aria-selected={selectable ? row.getIsSelected() : undefined}
         data-selected={(selectable && row.getIsSelected()) || undefined}
         data-depth={row.depth || undefined}
+        data-stripe={index % 2 === 1 || undefined}
+        data-index={index}
+        ref={enableVirtualization ? virtualizer.measureElement : undefined}
+        aria-rowindex={enableVirtualization ? headerRowCount + index + 1 : undefined}
         className={cx(
           'tably-tr',
           clickable && 'tably-tr-clickable',
@@ -257,11 +301,16 @@ function TableContent<TData extends RowData>({
   const detailId = (row: Row<TData>) => `${detailIdPrefix}${row.id}-detail`
 
   // Always a keyed fragment, so expanding a row does not remount it (and its focused toggle).
-  const renderRowWithDetail = (row: Row<TData>) => (
+  const renderRowWithDetail = (row: Row<TData>, index: number) => (
     <Fragment key={row.id}>
-      {renderRow(row)}
+      {renderRow(row, index)}
       {hasDetailPanel && row.getIsExpanded() && (
-        <tr className="tably-detail-row" id={detailId(row)}>
+        <tr
+          className="tably-detail-row"
+          id={detailId(row)}
+          data-index={index}
+          ref={enableVirtualization ? virtualizer.measureElement : undefined}
+        >
           <td colSpan={columns.length} className="tably-detail-cell">
             {renderDetailPanel(row)}
           </td>
@@ -284,7 +333,19 @@ function TableContent<TData extends RowData>({
         ? renderMessage(cx('tably-empty tably-no-results', classNames.empty), noResultsMessage ?? text.noResults)
         : renderMessage(cx('tably-empty', classNames.empty), emptyMessage ?? text.empty)
     }
-    return rows.map(renderRowWithDetail)
+    if (!enableVirtualization) return rows.map(renderRowWithDetail)
+
+    const spacer = (height: number, position: string) =>
+      height > 0 && (
+        <tr key={position} className="tably-spacer" aria-hidden="true" style={{ height }}>
+          <td colSpan={columns.length} />
+        </tr>
+      )
+    return [
+      spacer(virtualizer.paddingStart, 'spacer-start'),
+      ...virtualizer.items.map((item) => renderRowWithDetail(rows[item.index], item.index)),
+      spacer(virtualizer.paddingEnd, 'spacer-end')
+    ]
   }
 
   return (
@@ -302,11 +363,16 @@ function TableContent<TData extends RowData>({
           {typeof toolbar === 'function' ? toolbar(table) : toolbar}
         </div>
       )}
-      <div className={cx('tably-scroll', classNames.scroll)} style={maxHeight === undefined ? undefined : { maxHeight }}>
+      <div
+        ref={scrollRef}
+        className={cx('tably-scroll', classNames.scroll)}
+        style={scrollHeight === undefined ? undefined : { maxHeight: scrollHeight }}
+      >
         <table
           className={cx('tably-table', classNames.table)}
           aria-label={ariaLabel}
           aria-busy={loading || undefined}
+          aria-rowcount={enableVirtualization ? headerRowCount + rows.length : undefined}
           style={fixedLayout ? { width: table.getTotalSize(), tableLayout: 'fixed' } : undefined}
         >
           {caption !== undefined && <caption className={cx('tably-caption', classNames.caption)}>{caption}</caption>}
@@ -318,8 +384,12 @@ function TableContent<TData extends RowData>({
             </colgroup>
           )}
           <thead className={cx('tably-thead', classNames.thead)}>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className={classNames.headerRow}>
+            {table.getHeaderGroups().map((headerGroup, headerIndex) => (
+              <tr
+                key={headerGroup.id}
+                className={classNames.headerRow}
+                aria-rowindex={enableVirtualization ? headerIndex + 1 : undefined}
+              >
                 {headerGroup.headers.map((header) => (
                   <HeaderCell
                     key={header.id}
@@ -357,7 +427,10 @@ function TableContent<TData extends RowData>({
               </tr>
             ))}
             {showColumnFilters && (
-              <tr className={cx('tably-filter-row', classNames.filterRow)}>
+              <tr
+                className={cx('tably-filter-row', classNames.filterRow)}
+                aria-rowindex={enableVirtualization ? headerRowCount : undefined}
+              >
                 {columns.map((column) => (
                   <td
                     key={column.id}
@@ -376,7 +449,9 @@ function TableContent<TData extends RowData>({
               </tr>
             )}
           </thead>
-          <tbody className={cx('tably-tbody', classNames.tbody)}>{renderBody()}</tbody>
+          <tbody ref={tbodyRef} className={cx('tably-tbody', classNames.tbody)}>
+            {renderBody()}
+          </tbody>
         </table>
       </div>
       {options.enablePagination && (
@@ -389,6 +464,10 @@ function TableContent<TData extends RowData>({
 }
 
 const EXPAND_COLUMN_ID = 'tably-expand'
+
+/** Estimated row heights per density, before rows are measured. */
+const DEFAULT_ROW_HEIGHTS = { compact: 34, standard: 46, comfortable: 54 }
+const DEFAULT_VIRTUAL_HEIGHT = 600
 
 function createExpandColumn<TData extends RowData>(): DisplayColumnDef<TData> {
   return {
