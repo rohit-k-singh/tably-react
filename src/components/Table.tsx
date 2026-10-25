@@ -6,6 +6,7 @@ import { ColumnFilter } from './ColumnFilter'
 import { cx } from './cx'
 import { formatValue } from './formatValue'
 import { HeaderCell } from './HeaderCell'
+import { TablePagination } from './TablePagination'
 
 export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   /** Class name added to the outer container. */
@@ -27,6 +28,8 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   showColumnFilters?: boolean
   /** Delay before typed column filters are applied. Defaults to 200 ms. */
   filterDebounceMs?: number
+  /** Page size choices shown with `enablePagination`. Pass an empty array to hide the select. */
+  pageSizeOptions?: number[]
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -40,6 +43,7 @@ export function Table<TData extends RowData>({
   toolbar,
   showColumnFilters = false,
   filterDebounceMs = 200,
+  pageSizeOptions,
   'aria-label': ariaLabel,
   ...options
 }: TableProps<TData>) {
@@ -68,8 +72,9 @@ export function Table<TData extends RowData>({
       return renderMessage('tably-loading', <span className="tably-spinner" role="status" aria-label="Loading" />)
     }
     if (rows.length === 0) {
-      const hasData = table.getCoreRowModel().rows.length > 0
-      return hasData
+      const { columnFilters, globalFilter } = table.getState()
+      const isFiltered = columnFilters.length > 0 || (globalFilter != null && globalFilter !== '')
+      return isFiltered
         ? renderMessage('tably-empty tably-no-results', noResultsMessage)
         : renderMessage('tably-empty', emptyMessage)
     }
@@ -127,6 +132,11 @@ export function Table<TData extends RowData>({
           <tbody className="tably-tbody">{renderBody()}</tbody>
         </table>
       </div>
+      {options.enablePagination && (
+        <div className="tably-footer">
+          <TablePagination table={table} pageSizeOptions={pageSizeOptions} />
+        </div>
+      )}
     </div>
   )
 }

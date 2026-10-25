@@ -254,12 +254,14 @@ export function createFilteringTableApi<TData extends RowData>(
     setColumnFilters: (updater) => {
       const columnFilters = updateColumnFilters(updater)
       table.options.onColumnFiltersChange?.(columnFilters)
+      table.autoResetPageIndex()
     },
     resetColumnFilters: (defaultState) =>
       table.setColumnFilters(defaultState ? [] : table.initialState.columnFilters),
     setGlobalFilter: (updater) => {
       const globalFilter = updateGlobalFilter(updater)
       table.options.onGlobalFilterChange?.(globalFilter)
+      table.autoResetPageIndex()
     },
     resetGlobalFilter: (defaultState) =>
       table.setGlobalFilter(defaultState ? undefined : table.initialState.globalFilter),

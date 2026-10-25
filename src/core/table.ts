@@ -1,5 +1,6 @@
 import { createColumns } from './columns'
 import { createFilteringTableApi } from './features/filtering'
+import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
 import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
 import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
@@ -9,7 +10,8 @@ export function getDefaultTableState(): TableState {
   return {
     sorting: [],
     columnFilters: [],
-    globalFilter: undefined
+    globalFilter: undefined,
+    pagination: getDefaultPaginationState()
   }
 }
 
@@ -54,8 +56,9 @@ export function createTable<TData extends RowData>(
 
   Object.assign(table, createFilteringTableApi(table, table.getCoreRowModel))
   Object.assign(table, createSortingTableApi(table, table.getFilteredRowModel))
+  Object.assign(table, createPaginationTableApi(table, table.getSortedRowModel))
 
-  table.getRowModel = () => table.getSortedRowModel()
+  table.getRowModel = () => table.getPaginationRowModel()
 
   return table
 }
