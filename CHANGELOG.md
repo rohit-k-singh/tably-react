@@ -36,5 +36,5 @@ versions; the 1.0.x releases were an early prototype (see "Migrating from the 1.
 - Keyboard grid navigation (`enableKeyboardNavigation`), faceted values (`getFacetedUniqueValues`,
   `getFacetedMinMaxValues`) with `filterVariant` select / multi-select controls, and CSV export (`getCsv`,
   `downloadCsv`, `TableExportButton`).
-- End-to-end tests in Chromium, Firefox and WebKit with axe accessibility checks, a bundle size budget, and a
-  changesets-based release workflow publishing with npm provenance.
+- End-to-end tests in Chromium, Firefox and WebKit with axe accessibility checks, a bundle size budget, and
+  automatic releases to npm (with provenance) on every push to `main` that changes the package.

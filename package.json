@@ -37,7 +37,7 @@
     "test:e2e": "playwright test",
     "size": "node scripts/check-size.mjs",
     "changeset": "changeset",
-    "release": "changeset publish"
+    "release:plan": "node scripts/release.ts --dry-run"
   },
   "repository": {
     "type": "git",

@@ -709,10 +709,25 @@ End-to-end tests run in Chromium locally; set `E2E_BROWSERS=chromium,firefox,web
 
 ### Releasing
 
-Add a changeset to every pull request that changes the package (`npx changeset`). On `main`, the Release workflow
-keeps a "Version Packages" pull request up to date; merging it bumps the version and the changelog. Publishing is
-manual: Actions → Release → Run workflow publishes unpublished versions to npm with provenance and tags them. It needs
-either npm trusted publishing configured for this repository or an `NPM_TOKEN` secret.
+Every push to `main` runs the full CI (unit tests on React 18 and 19, package checks, size budget, end-to-end and
+accessibility tests in three browsers) and then publishes the next version to npm automatically, when the package
+changed (`src/`, `package.json`, `tsup.config.ts` or `.changeset/`; documentation-only pushes release nothing):
+
+1. A version in `package.json` that was never published (such as the first release) is published as is.
+2. Otherwise, pending changesets decide the bump and changelog: run `npx changeset` in a pull request to make a
+   minor or major release, or to write the changelog entry yourself.
+3. Otherwise, the patch version is bumped and the commit subjects since the last release become the changelog entry.
+
+The workflow commits the new version and changelog to `main` (`Release vX.Y.Z [skip ci]`), tags it, publishes with
+npm provenance and creates a GitHub release with the changelog section as notes. Each step is skipped when already
+done, so re-running a failed release finishes it. `npm run release:plan` shows what the next release would be.
+
+Setup, once:
+
+- **npm**: configure [trusted publishing](https://docs.npmjs.com/trusted-publishers) for this repository and the
+  `release.yml` workflow (no secret needed), or add an `NPM_TOKEN` repository secret (an automation token).
+- **Protected `main`**: if pull requests are required on `main`, allow the GitHub Actions bot to bypass the rule, or
+  add a `RELEASE_TOKEN` secret (a fine-grained token with Contents: write) so the version commit can be pushed.
 
 ## Migrating from the 1.0.x prototype
 
