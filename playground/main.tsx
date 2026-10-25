@@ -101,6 +101,7 @@ const columns: ColumnDef<Person>[] = [
     enableHiding: false,
     cell: ({ row }) => (
       <button
+        className="tably-button"
         onClick={(event) => {
           event.stopPropagation()
           alert(row.original.name)

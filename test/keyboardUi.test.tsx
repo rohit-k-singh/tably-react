@@ -33,8 +33,9 @@ describe('keyboard grid navigation', () => {
 
     const tabbable = Array.from(document.querySelectorAll<HTMLElement>('table *')).filter((el) => el.tabIndex === 0)
     expect(tabbable).toEqual([cellAt(-1, 0)])
-    // Controls inside cells leave the Tab order.
+    // Controls inside cells leave the Tab order, and so does the scroll area (Firefox makes scrollers Tab stops).
     expect(screen.getByRole('button', { name: 'Edit Ada' }).tabIndex).toBe(-1)
+    expect(screen.getByRole('grid').parentElement).toHaveAttribute('tabindex', '-1')
     expect(screen.getByRole('button', { name: 'Name' }).tabIndex).toBe(-1)
   })
 
