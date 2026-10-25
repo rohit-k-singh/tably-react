@@ -7,6 +7,11 @@ import type {
   FilteringTableState
 } from './features/filtering'
 import type {
+  PaginationInstance,
+  PaginationOptions,
+  PaginationTableState
+} from './features/pagination'
+import type {
   SortingColumn,
   SortingColumnDef,
   SortingInstance,
@@ -191,11 +196,12 @@ export interface RowModel<TData extends RowData> {
   rowsById: Record<string, Row<TData>>
 }
 
-export interface TableState extends SortingTableState, FilteringTableState {}
+export interface TableState extends SortingTableState, FilteringTableState, PaginationTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
-    FilteringOptions<TData> {
+    FilteringOptions<TData>,
+    PaginationOptions {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -216,7 +222,8 @@ export interface ResolvedTableOptions<TData extends RowData> extends TableOption
 
 export interface TableInstance<TData extends RowData>
   extends SortingInstance<TData>,
-    FilteringInstance<TData> {
+    FilteringInstance<TData>,
+    PaginationInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState

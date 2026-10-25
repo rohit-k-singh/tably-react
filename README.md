@@ -9,6 +9,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - ESM and CommonJS builds, server-rendering safe (`'use client'` included for React Server Components)
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
+- Pagination: page navigation and page size, client or server side
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 ## Installation
@@ -190,6 +191,59 @@ Table options and props:
 In code, use `column.setFilterValue(value)`, `column.getFilterValue()`, `table.setGlobalFilter(value)`,
 `table.resetColumnFilters()` and `table.resetGlobalFilter()`.
 
+## Pagination
+
+```tsx
+<Table data={users} columns={columns} enablePagination />
+```
+
+This splits rows into pages of 10 and adds a footer with a page size select, the visible range ("11–20 of 57") and
+first / previous / next / last buttons. Sorting or filtering returns to the first page (turn that off with
+`autoResetPageIndex={false}`). When the data shrinks, the last available page is shown.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enablePagination` | `false` | Split rows into pages. |
+| `initialState.pagination` | `{ pageIndex: 0, pageSize: 10 }` | Starting page (zero-based) and page size. |
+| `state.pagination` + `onPaginationChange` | | Control the pagination yourself. |
+| `pageSizeOptions` | `[10, 20, 50, 100]` | Page size choices; `[]` hides the select (`<Table>` only). |
+| `autoResetPageIndex` | `true` | Go back to the first page when sorting or filters change. |
+| `manualPagination` | `false` | `data` is the current page, loaded elsewhere (e.g. by your API). |
+| `rowCount` / `pageCount` | | Total rows or pages, for manual pagination. Without either, the total is shown as unknown. |
+
+Server-side pagination, sorting and filtering together:
+
+```tsx
+const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 })
+const [sorting, setSorting] = useState<SortingState>([])
+const [globalFilter, setGlobalFilter] = useState('')
+const { data } = useQuery({
+  queryKey: ['users', pagination, sorting, globalFilter],
+  queryFn: () => fetchUsers({ pagination, sorting, search: globalFilter })
+})
+
+<Table
+  data={data?.rows ?? []}
+  rowCount={data?.total}
+  columns={columns}
+  enablePagination
+  manualPagination
+  manualSorting
+  manualFiltering
+  state={{ pagination, sorting, globalFilter }}
+  onPaginationChange={setPagination}
+  onSortingChange={setSorting}
+  onGlobalFilterChange={setGlobalFilter}
+  toolbar={(table) => <TableSearch table={table} />}
+  loading={!data}
+/>
+```
+
+In code: `table.nextPage()`, `previousPage()`, `firstPage()`, `lastPage()`, `setPageIndex(i)`, `setPageSize(n)`,
+`getPageIndex()`, `getPageCount()`, `getRowCount()`, `getCanNextPage()` and `getCanPreviousPage()`.
+`<TablePagination table />` is the footer component, for custom layouts; it accepts `pageSizeOptions` and
+`showFirstLastButtons`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -198,7 +252,7 @@ In code, use `column.setFilterValue(value)`, `column.getFilterValue()`, `table.s
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting) and [Filtering](#filtering). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering) and [Pagination](#pagination). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -273,7 +327,8 @@ Theme the table by overriding CSS variables on the container or any ancestor:
 | `--tably-input-bg`, `--tably-input-border-color`, `--tably-input-radius` | Search and filter inputs |
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
-`tably-search`, `tably-scroll`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
+`tably-page-button`, `tably-page-status`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

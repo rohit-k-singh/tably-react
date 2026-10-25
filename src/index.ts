@@ -2,6 +2,8 @@ export { Table, Table as default } from './components/Table'
 export type { TableProps } from './components/Table'
 export { TableSearch } from './components/TableSearch'
 export type { TableSearchProps } from './components/TableSearch'
+export { TablePagination } from './components/TablePagination'
+export type { TablePaginationProps } from './components/TablePagination'
 export { ColumnFilter } from './components/ColumnFilter'
 export type { ColumnFilterProps } from './components/ColumnFilter'
 
@@ -21,6 +23,13 @@ export type {
   FilteringOptions,
   FilteringTableState
 } from './core/features/filtering'
+export { getDefaultPaginationState } from './core/features/pagination'
+export type {
+  PaginationInstance,
+  PaginationOptions,
+  PaginationState,
+  PaginationTableState
+} from './core/features/pagination'
 export { sortingFns } from './core/features/sorting'
 export type {
   BuiltInSortingFn,

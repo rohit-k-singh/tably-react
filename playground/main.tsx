@@ -89,11 +89,14 @@ function App() {
         loading={loading}
         getRowId={getRowId}
         showColumnFilters={filters}
+        enablePagination
+        initialState={{ pagination: { pageIndex: 0, pageSize: 5 } }}
+        pageSizeOptions={[5, 10, 25]}
         toolbar={(table) => (
           <>
             <TableSearch table={table} />
             <span style={{ marginLeft: 'auto', color: '#6b7280' }}>
-              {table.getRowModel().rows.length} of {table.getCoreRowModel().rows.length} people
+              {table.getFilteredRowModel().rows.length} of {table.getCoreRowModel().rows.length} people
             </span>
           </>
         )}

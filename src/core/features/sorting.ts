@@ -203,6 +203,7 @@ export function createSortingTableApi<TData extends RowData>(
     setSorting: (updater) => {
       const sorting = updateSorting(updater)
       table.options.onSortingChange?.(sorting)
+      table.autoResetPageIndex()
     },
     resetSorting: (defaultState) => table.setSorting(defaultState ? [] : table.initialState.sorting),
     getPreSortedRowModel,
