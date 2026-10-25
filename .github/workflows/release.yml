@@ -1,56 +1,89 @@
 name: Release
 
+# Every push to main runs the full CI and then publishes the next version to npm, when the package changed:
+# - a version in package.json that was never published (e.g. the first release) is published as is;
+# - otherwise pending changesets decide the bump and changelog (`npx changeset`);
+# - otherwise the patch version is bumped, with the commit subjects as changelog entries.
+# Changes outside src/, package.json, tsup.config.ts and .changeset/ do not make a release.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+# Releases run one at a time, in push order.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  version:
-    name: Version Packages pull request
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # Opens or updates the "Version Packages" pull request from pending changesets. Never publishes.
-      - uses: changesets/action@v1
-        with:
-          version: npx changeset version
-          title: Version Packages
-          commit: Version Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
 
-  publish:
-    name: Publish to npm
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+  release:
+    name: Publish next version
+    needs: ci
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # version commit, tag and GitHub release
       id-token: write # npm provenance and trusted publishing
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          # A token allowed to push to main when it is protected; the default token otherwise.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
-      # Runs prepublishOnly (typecheck, tests, build, package checks), publishes versions not yet on npm,
-      # and pushes a git tag per published version.
-      - run: npx changeset publish
+
+      - name: Decide the version and update the changelog
+        id: version
+        run: node scripts/release.ts
+
+      # The version commit and tag are pushed before publishing: if publishing fails, the next run
+      # finds the version unpublished and publishes it.
+      - name: Commit and tag
+        if: steps.version.outputs.version != ''
         env:
-          NPM_CONFIG_PROVENANCE: 'true'
-          # Not needed when npm trusted publishing is set up for this repository.
+          VERSION: ${{ steps.version.outputs.version }}
+          CHANGED: ${{ steps.version.outputs.changed }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "Tag v$VERSION exists already."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ "$CHANGED" = 'true' ]; then
+            git add package.json package-lock.json CHANGELOG.md .changeset
+            git commit -m "Release v$VERSION [skip ci]"
+          fi
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push --atomic origin "HEAD:$GITHUB_REF_NAME" "v$VERSION"
+
+      - name: Publish to npm
+        if: steps.version.outputs.version != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          # Not needed when npm trusted publishing is set up for this repository and workflow.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: git push --follow-tags
+        run: |
+          if npm view "tably-react@$VERSION" version > /dev/null 2>&1; then
+            echo "tably-react@$VERSION is published already."
+          else
+            npm publish --provenance --access public
+          fi
+
+      - name: GitHub release
+        if: steps.version.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES: ${{ steps.version.outputs.notes }}
+        run: |
+          gh release view "v$VERSION" > /dev/null 2>&1 \
+            || gh release create "v$VERSION" --title "v$VERSION" --notes-file "$NOTES" --verify-tag

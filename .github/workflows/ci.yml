@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  # Pushes to main run CI through the Release workflow, before publishing.
+  workflow_call:
 
 jobs:
   check:
