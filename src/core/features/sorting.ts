@@ -97,22 +97,40 @@ const textCaseSensitiveCollator = new Intl.Collator(undefined, { sensitivity: 'v
 const compareBasic = (a: unknown, b: unknown) => ((a as any) === (b as any) ? 0 : (a as any) > (b as any) ? 1 : -1)
 const toTime = (value: unknown) => (value instanceof Date ? value.getTime() : new Date(value as string).getTime())
 
-const collatorSortingFn =
-  (collator: Intl.Collator): SortingFn<any> =>
-  (rowA, rowB, columnId) =>
-    collator.compare(String(rowA.getValue(columnId)), String(rowB.getValue(columnId)))
+/**
+ * A sorting function that compares values derived from each row's cell
+ * value. Sorting computes `toKey` once per row instead of once per
+ * comparison, which matters for large row counts.
+ */
+interface KeyedSortingFn<TKey> extends SortingFn<any> {
+  toKey: (value: unknown) => TKey
+  compareKeys: (a: TKey, b: TKey) => number
+}
+
+function keyedSortingFn<TKey>(
+  toKey: (value: unknown) => TKey,
+  compareKeys: (a: TKey, b: TKey) => number
+): KeyedSortingFn<TKey> {
+  const fn = ((rowA, rowB, columnId) =>
+    compareKeys(toKey(rowA.getValue(columnId)), toKey(rowB.getValue(columnId)))) as KeyedSortingFn<TKey>
+  fn.toKey = toKey
+  fn.compareKeys = compareKeys
+  return fn
+}
+
+const isKeyed = (fn: SortingFn<any>): fn is KeyedSortingFn<unknown> => 'compareKeys' in fn
 
 export const sortingFns = {
   /** Natural, case-insensitive order: "item 2" before "item 10". */
-  alphanumeric: collatorSortingFn(naturalCollator),
-  alphanumericCaseSensitive: collatorSortingFn(naturalCaseSensitiveCollator),
+  alphanumeric: keyedSortingFn(String, naturalCollator.compare),
+  alphanumericCaseSensitive: keyedSortingFn(String, naturalCaseSensitiveCollator.compare),
   /** Locale-aware, case-insensitive text order. */
-  text: collatorSortingFn(textCollator),
-  textCaseSensitive: collatorSortingFn(textCaseSensitiveCollator),
+  text: keyedSortingFn(String, textCollator.compare),
+  textCaseSensitive: keyedSortingFn(String, textCaseSensitiveCollator.compare),
   /** Dates, or values `new Date()` accepts. */
-  datetime: (rowA, rowB, columnId) => compareBasic(toTime(rowA.getValue(columnId)), toTime(rowB.getValue(columnId))),
+  datetime: keyedSortingFn(toTime, compareBasic),
   /** `<` / `>` comparison, for numbers and booleans. */
-  basic: (rowA, rowB, columnId) => compareBasic(rowA.getValue(columnId), rowB.getValue(columnId))
+  basic: keyedSortingFn((value) => value, compareBasic)
 } satisfies Record<string, SortingFn<any>>
 
 const isMissing = (value: unknown) => value === undefined || value === null
@@ -235,22 +253,41 @@ function sortRowModel<TData extends RowData>(
   })
   if (sorters.length === 0) return createRowModel(rows)
 
-  const sorted = [...rows].sort((rowA, rowB) => {
-    for (const sorter of sorters) {
+  // Read each sorted column once per row up front, instead of in every comparison.
+  const prepared = sorters.map((sorter) => {
+    const values = rows.map((row) => row.getValue(sorter.id))
+    const keyed = isKeyed(sorter.sortingFn) ? sorter.sortingFn : undefined
+    return {
+      ...sorter,
+      direction: (sorter.desc ? -1 : 1) * (sorter.invert ? -1 : 1),
+      missingDirection: sorter.sortUndefined === 'first' ? -1 : 1,
+      missing: values.map(isMissing),
+      keys: keyed ? values.map((value) => (isMissing(value) ? undefined : keyed.toKey(value))) : undefined,
+      compareKeys: keyed?.compareKeys
+    }
+  })
+
+  const order = rows.map((_, index) => index)
+  order.sort((a, b) => {
+    for (const sorter of prepared) {
       if (sorter.sortUndefined !== false) {
-        const aMissing = isMissing(rowA.getValue(sorter.id))
-        const bMissing = isMissing(rowB.getValue(sorter.id))
+        const aMissing = sorter.missing[a]
+        const bMissing = sorter.missing[b]
         if (aMissing || bMissing) {
           if (aMissing && bMissing) continue
-          return (aMissing ? 1 : -1) * (sorter.sortUndefined === 'first' ? -1 : 1)
+          return (aMissing ? 1 : -1) * sorter.missingDirection
         }
       }
 
-      const result = sorter.sortingFn(rowA, rowB, sorter.id)
-      if (result !== 0) return result * (sorter.desc ? -1 : 1) * (sorter.invert ? -1 : 1)
+      const result =
+        sorter.keys && sorter.compareKeys
+          ? sorter.compareKeys(sorter.keys[a], sorter.keys[b])
+          : sorter.sortingFn(rows[a], rows[b], sorter.id)
+      if (result !== 0) return result * sorter.direction
     }
-    return rowA.index - rowB.index
+    return rows[a].index - rows[b].index
   })
 
+  const sorted = order.map((index) => rows[index])
   return createRowModel(sorted)
 }
