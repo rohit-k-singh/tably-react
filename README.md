@@ -697,10 +697,22 @@ To style from scratch, skip the stylesheet and target the class names: `tably-co
 npm install
 npm run dev            # playground at http://localhost:5173
 npm test               # unit tests (Vitest + Testing Library)
+npm run test:e2e       # end-to-end and axe accessibility tests (Playwright) against the playground
 npm run typecheck
 npm run build          # ESM + CJS + type declarations into dist/
 npm run check:package  # validate the published package shape (publint, are-the-types-wrong)
+npm run size           # bundle size budget (after build)
 ```
+
+End-to-end tests run in Chromium locally; set `E2E_BROWSERS=chromium,firefox,webkit` after
+`npx playwright install` to run all three, as CI does. CI also runs the unit tests against React 18 and 19.
+
+### Releasing
+
+Add a changeset to every pull request that changes the package (`npx changeset`). On `main`, the Release workflow
+keeps a "Version Packages" pull request up to date; merging it bumps the version and the changelog. Publishing is
+manual: Actions → Release → Run workflow publishes unpublished versions to npm with provenance and tags them. It needs
+either npm trusted publishing configured for this repository or an `NPM_TOKEN` secret.
 
 ## Migrating from the 1.0.x prototype
 
