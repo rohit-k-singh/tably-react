@@ -1,17 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createColumnHelper, createTable, type ColumnDef, type TableState } from '../src'
+import { createColumnHelper, type ColumnDef } from '../src'
 import { functionalUpdate, getByPath, memo } from '../src/core/utils'
-import { people, type Person } from './fixtures'
+import { createTestTable, people, type Person } from './fixtures'
 
-function setup(columns: ColumnDef<Person>[], options: { getRowId?: (row: Person) => string } = {}) {
-  return createTable<Person>({
-    data: people,
-    columns,
-    ...options,
-    state: {} as TableState,
-    onStateChange: () => {}
-  })
-}
+const setup = (columns: ColumnDef<Person>[], options: { getRowId?: (row: Person) => string } = {}) =>
+  createTestTable({ data: people, columns, ...options })
 
 describe('getByPath', () => {
   it('reads top-level and nested paths', () => {

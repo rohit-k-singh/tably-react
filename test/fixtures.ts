@@ -1,3 +1,20 @@
+import { createTable, getDefaultTableState, type RowData, type TableOptions, type TableState } from '../src'
+import { functionalUpdate } from '../src/core/utils'
+
+/** A standalone table that stores its own state, like `useTable` does. */
+export function createTestTable<TData extends RowData>(options: TableOptions<TData>) {
+  let state: TableState = { ...getDefaultTableState(), ...options.initialState }
+  const table = createTable<TData>({
+    ...options,
+    state: { ...state, ...options.state },
+    onStateChange: (updater) => {
+      state = functionalUpdate(updater, state)
+      table.setOptions({ ...table.options, state: { ...state, ...options.state } })
+    }
+  })
+  return table
+}
+
 export interface Person {
   id: number
   name: string

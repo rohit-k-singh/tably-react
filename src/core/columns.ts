@@ -1,7 +1,11 @@
-import type { AnyColumnDef, Column, ColumnDef, RowData } from './types'
+import { createSortingColumnApi } from './features/sorting'
+import type { AnyColumnDef, Column, ColumnDef, RowData, TableInstance } from './types'
 import { getByPath } from './utils'
 
-export function createColumns<TData extends RowData>(columnDefs: ColumnDef<TData>[]): Column<TData>[] {
+export function createColumns<TData extends RowData>(
+  table: TableInstance<TData>,
+  columnDefs: ColumnDef<TData>[]
+): Column<TData>[] {
   const seen = new Set<string>()
 
   return (columnDefs as AnyColumnDef<TData>[]).map((columnDef, index) => {
@@ -20,6 +24,7 @@ export function createColumns<TData extends RowData>(columnDefs: ColumnDef<TData
       columnDef.accessorFn ??
       (accessorKey !== undefined ? (row: TData) => getByPath(row, accessorKey) : undefined)
 
-    return { id, columnDef, index, accessorFn }
+    const column = { id, columnDef, index, accessorFn } as Column<TData>
+    return Object.assign(column, createSortingColumnApi(table, column))
   })
 }

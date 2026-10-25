@@ -4,7 +4,20 @@ export type { TableProps } from './components/Table'
 export { useTable } from './react/useTable'
 export { flexRender } from './react/flexRender'
 
-export { createTable } from './core/table'
+export { createTable, getDefaultTableState } from './core/table'
+export { sortingFns } from './core/features/sorting'
+export type {
+  BuiltInSortingFn,
+  ColumnSort,
+  SortDirection,
+  SortingColumn,
+  SortingColumnDef,
+  SortingFn,
+  SortingInstance,
+  SortingOptions,
+  SortingState,
+  SortingTableState
+} from './core/features/sorting'
 export { createColumnHelper } from './core/columnHelper'
 export type { ColumnHelper } from './core/columnHelper'
 export type {
