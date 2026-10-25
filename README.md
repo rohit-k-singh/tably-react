@@ -14,6 +14,8 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Pagination: page navigation and page size, client or server side
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
+> **Status: early release (0.x).** The API may still change between minor versions until 1.0.
+
 ## Installation
 
 ```bash
@@ -409,9 +411,11 @@ npm run build          # ESM + CJS + type declarations into dist/
 npm run check:package  # validate the published package shape (publint, are-the-types-wrong)
 ```
 
-## Migrating from 1.x
+## Migrating from the 1.0.x prototype
 
-| 1.x | 2.x |
+The 1.0.x releases were an early prototype. 0.0.1 restarts versioning with a new API:
+
+| 1.0.x | 0.0.1 |
 | --- | --- |
 | `{ key: 'name', header: 'Name' }` | `{ accessorKey: 'name', header: 'Name' }` |
 | `render: (value, row) => ...` | `cell: ({ getValue, row }) => ...` (`row.original` is the row object) |
