@@ -1,4 +1,11 @@
 import type { ComponentClass, ExoticComponent, ReactNode } from 'react'
+import type {
+  SortingColumn,
+  SortingColumnDef,
+  SortingInstance,
+  SortingOptions,
+  SortingTableState
+} from './features/sorting'
 
 /** Any object can be a table row. */
 export type RowData = object
@@ -73,7 +80,7 @@ export type Renderable<TContext> =
   | ComponentClass<TContext>
   | ExoticComponent<TContext>
 
-export interface ColumnDefBase<TData extends RowData, TValue> {
+export interface ColumnDefBase<TData extends RowData, TValue> extends SortingColumnDef<TData> {
   /** Header cell content. Defaults to the column id. */
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
@@ -131,7 +138,7 @@ export interface AnyColumnDef<TData extends RowData> extends ColumnDefBase<TData
   accessorFn?: (row: TData, index: number) => unknown
 }
 
-export interface Column<TData extends RowData> {
+export interface Column<TData extends RowData> extends SortingColumn<TData> {
   id: string
   /** The definition this column was created from. */
   columnDef: AnyColumnDef<TData>
@@ -168,9 +175,9 @@ export interface RowModel<TData extends RowData> {
   rowsById: Record<string, Row<TData>>
 }
 
-export interface TableState {}
+export interface TableState extends SortingTableState {}
 
-export interface TableOptions<TData extends RowData> {
+export interface TableOptions<TData extends RowData> extends SortingOptions {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -189,7 +196,7 @@ export interface ResolvedTableOptions<TData extends RowData> extends TableOption
   onStateChange: (updater: Updater<TableState>) => void
 }
 
-export interface TableInstance<TData extends RowData> {
+export interface TableInstance<TData extends RowData> extends SortingInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState

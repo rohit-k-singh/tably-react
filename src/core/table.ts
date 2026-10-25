@@ -1,10 +1,13 @@
 import { createColumns } from './columns'
+import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
 import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
 import { memo } from './utils'
 
 export function getDefaultTableState(): TableState {
-  return {}
+  return {
+    sorting: []
+  }
 }
 
 /**
@@ -26,7 +29,7 @@ export function createTable<TData extends RowData>(
 
   table.getAllColumns = memo(
     () => [table.options.columns],
-    (columnDefs) => createColumns(columnDefs)
+    (columnDefs) => createColumns(table, columnDefs)
   )
 
   const getColumnsById = memo(
@@ -46,7 +49,9 @@ export function createTable<TData extends RowData>(
     }
   )
 
-  table.getRowModel = () => table.getCoreRowModel()
+  Object.assign(table, createSortingTableApi(table, table.getCoreRowModel))
+
+  table.getRowModel = () => table.getSortedRowModel()
 
   return table
 }

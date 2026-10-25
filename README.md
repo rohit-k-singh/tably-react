@@ -7,7 +7,8 @@ A customizable React table component written in TypeScript, with zero runtime de
 - No runtime dependencies; works with React 18 and 19
 - Optional, framework-agnostic stylesheet themed with CSS variables
 - ESM and CommonJS builds, server-rendering safe (`'use client'` included for React Server Components)
-- Accessible: keyboard-operable clickable rows, `aria-busy` while loading
+- Sorting: multi-column, natural string order, custom comparators, client or server side
+- Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 ## Installation
 
@@ -95,6 +96,45 @@ declare module 'tably-react' {
 }
 ```
 
+## Sorting
+
+Every column with a value is sortable by default. Click a header to cycle ascending → descending → unsorted;
+Shift-click to sort by several columns. Disable it per column with `enableSorting: false`, or for the whole table with
+`enableSorting={false}`.
+
+Column options:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enableSorting` | `true` | Allow sorting by this column. |
+| `sortingFn` | `'auto'` | `'alphanumeric'`, `'alphanumericCaseSensitive'`, `'text'`, `'textCaseSensitive'`, `'datetime'`, `'basic'`, or `(rowA, rowB, columnId) => number`. `'auto'` uses `datetime` for dates, `alphanumeric` (natural order: "item 2" before "item 10") for strings and `basic` otherwise. |
+| `sortDescFirst` | `false` | Sort descending on the first click. |
+| `invertSorting` | `false` | Reverse the order, e.g. for rankings where lower is better. |
+| `sortUndefined` | `'last'` | Where `null` / `undefined` go regardless of direction: `'first'`, `'last'`, or `false` to pass them to `sortingFn`. |
+
+Table options:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `initialState.sorting` | `[]` | Starting sort, e.g. `[{ id: 'age', desc: true }]`. |
+| `state.sorting` / `onSortingChange` | | Control the sorting state yourself. |
+| `enableSorting` | `true` | Allow sorting at all. |
+| `enableMultiSort` | `true` | Allow sorting by several columns. |
+| `maxMultiSortColCount` | unlimited | Maximum number of sorted columns. |
+| `isMultiSortEvent` | Shift held | `(event) => boolean` deciding whether a click adds to the sort. |
+| `enableSortingRemoval` | `true` | Whether the cycle returns to unsorted. |
+| `sortDescFirst` | `false` | Sort descending on the first click, for every column. |
+| `manualSorting` | `false` | Rows are sorted elsewhere (e.g. by your API); only the state is tracked. |
+
+Server-side sorting:
+
+```tsx
+const [sorting, setSorting] = useState<SortingState>([])
+const { data } = useQuery({ queryKey: ['users', sorting], queryFn: () => fetchUsers({ sorting }) })
+
+<Table data={data ?? []} columns={columns} manualSorting state={{ sorting }} onSortingChange={setSorting} />
+```
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -102,7 +142,9 @@ declare module 'tably-react' {
 | `data` | `T[]` | required | Rows to display. |
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
-| `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). |
+| `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
+| Feature options | | | See [Sorting](#sorting). |
+| `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
 | `className` | `string` | | Class added to the scroll container. |
@@ -123,7 +165,10 @@ function MyTable({ data }: { data: User[] }) {
       <thead>
         <tr>
           {table.getAllColumns().map((column) => (
-            <th key={column.id}>{flexRender(column.columnDef.header ?? column.id, { table, column })}</th>
+            <th key={column.id} onClick={column.getToggleSortingHandler()}>
+              {flexRender(column.columnDef.header ?? column.id, { table, column })}
+              {column.getIsSorted() === 'asc' ? ' ▲' : column.getIsSorted() === 'desc' ? ' ▼' : null}
+            </th>
           ))}
         </tr>
       </thead>
@@ -141,7 +186,8 @@ function MyTable({ data }: { data: User[] }) {
 }
 ```
 
-`createTable` is the same engine without React, for use in other frameworks or on the server.
+`createTable` is the same engine without React, for use in other frameworks or on the server. It expects the full
+state in `options.state` (start from `getDefaultTableState()`) and reports changes through `options.onStateChange`.
 
 ## Styling
 
@@ -168,9 +214,10 @@ Theme the table by overriding CSS variables on the container or any ancestor:
 | `--tably-cell-padding-y`, `--tably-cell-padding-x` | Cell padding (density) |
 | `--tably-row-hover-bg`, `--tably-focus-ring` | Interactive rows |
 | `--tably-spinner-color`, `--tably-spinner-size` | Loading indicator |
+| `--tably-sort-indicator-color`, `--tably-sort-indicator-active-color` | Sort arrows |
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-table`, `tably-thead`,
-`tably-th`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
+`tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development
 

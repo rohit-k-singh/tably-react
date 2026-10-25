@@ -1,7 +1,7 @@
-import { Component, forwardRef, memo } from 'react'
+import { Component, forwardRef, memo, useState } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import DefaultTable, { Table, type CellContext, type ColumnDef } from '../src'
+import DefaultTable, { Table, type CellContext, type ColumnDef, type SortingState } from '../src'
 import { people, type Person } from './fixtures'
 
 const columns: ColumnDef<Person>[] = [
@@ -163,5 +163,79 @@ describe('Table', () => {
 
     expect(screen.getByText('Ada').closest('tr')).toBe(adaRow)
     expect(cellTexts(bodyRows()[0])[0]).toBe('Grace')
+  })
+
+  describe('sorting', () => {
+    const firstColumn = () => bodyRows().map((row) => cellTexts(row)[0])
+
+    it('sorts when a header button is clicked and sets aria-sort', () => {
+      render(<Table data={people} columns={columns} />)
+      const nameHeader = screen.getByRole('columnheader', { name: 'Name' })
+      const nameButton = within(nameHeader).getByRole('button', { name: 'Name' })
+
+      expect(nameHeader).not.toHaveAttribute('aria-sort')
+      fireEvent.click(nameButton)
+      expect(nameHeader).toHaveAttribute('aria-sort', 'ascending')
+      expect(firstColumn()).toEqual(['Ada', 'Grace', 'Linus'])
+
+      fireEvent.click(nameButton)
+      expect(nameHeader).toHaveAttribute('aria-sort', 'descending')
+      expect(firstColumn()).toEqual(['Linus', 'Grace', 'Ada'])
+
+      fireEvent.click(nameButton)
+      expect(nameHeader).not.toHaveAttribute('aria-sort')
+      expect(firstColumn()).toEqual(['Ada', 'Linus', 'Grace'])
+    })
+
+    it('shows sort priority when sorting by several columns with Shift', () => {
+      render(<Table data={people} columns={columns} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Name' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Age' }), { shiftKey: true })
+
+      const ageHeader = screen.getByRole('columnheader', { name: /Age/ })
+      expect(ageHeader).toHaveAttribute('aria-sort', 'ascending')
+      expect(ageHeader.querySelector('.tably-sort-index')).toHaveTextContent('2')
+      expect(screen.getByRole('columnheader', { name: /Name/ }).querySelector('.tably-sort-index')).toHaveTextContent(
+        '1'
+      )
+    })
+
+    it('renders plain headers for columns that cannot sort', () => {
+      render(
+        <Table
+          data={people}
+          columns={[{ accessorKey: 'name', header: 'Name', enableSorting: false }, { id: 'actions', header: 'Actions' }]}
+        />
+      )
+
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('supports controlled sorting', () => {
+      const onSortingChange = vi.fn()
+
+      function Controlled() {
+        const [sorting, setSorting] = useState<SortingState>([{ id: 'age', desc: true }])
+        return (
+          <Table
+            data={people}
+            columns={columns}
+            state={{ sorting }}
+            onSortingChange={(next) => {
+              onSortingChange(next)
+              setSorting(next)
+            }}
+          />
+        )
+      }
+
+      render(<Controlled />)
+      expect(firstColumn()).toEqual(['Grace', 'Linus', 'Ada'])
+
+      fireEvent.click(screen.getByRole('button', { name: 'Name' }))
+      expect(onSortingChange).toHaveBeenCalledWith([{ id: 'name', desc: false }])
+      expect(firstColumn()).toEqual(['Ada', 'Grace', 'Linus'])
+    })
   })
 })

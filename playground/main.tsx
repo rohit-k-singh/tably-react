@@ -8,20 +8,53 @@ interface Person {
   name: string
   email: string
   role: 'Admin' | 'Editor' | 'Viewer'
+  age: number
+  joined: Date
   address: { city: string; country: string }
 }
 
-const people: Person[] = [
-  { id: 1, name: 'Ada Lovelace', email: 'ada@example.com', role: 'Admin', address: { city: 'London', country: 'UK' } },
-  { id: 2, name: 'Alan Turing', email: 'alan@example.com', role: 'Editor', address: { city: 'Manchester', country: 'UK' } },
-  { id: 3, name: 'Grace Hopper', email: 'grace@example.com', role: 'Viewer', address: { city: 'Arlington', country: 'USA' } }
+const FIRST = ['Ada', 'Alan', 'Grace', 'Linus', 'Margaret', 'Dennis', 'Barbara', 'Ken', 'Frances', 'Edsger']
+const LAST = ['Lovelace', 'Turing', 'Hopper', 'Torvalds', 'Hamilton', 'Ritchie', 'Liskov', 'Thompson', 'Allen', 'Dijkstra']
+const CITIES = [
+  { city: 'London', country: 'UK' },
+  { city: 'Manchester', country: 'UK' },
+  { city: 'Arlington', country: 'USA' },
+  { city: 'Helsinki', country: 'Finland' },
+  { city: 'Boston', country: 'USA' }
 ]
+const ROLES: Person['role'][] = ['Admin', 'Editor', 'Viewer']
+
+const people: Person[] = Array.from({ length: 25 }, (_, i) => {
+  const first = FIRST[i % FIRST.length]
+  const last = LAST[(i * 3) % LAST.length]
+  return {
+    id: i + 1,
+    name: `${first} ${last}`,
+    email: `${first.toLowerCase()}.${last.toLowerCase()}@example.com`,
+    role: ROLES[i % ROLES.length],
+    age: 22 + ((i * 7) % 50),
+    joined: new Date(2015 + (i % 10), (i * 5) % 12, 1 + ((i * 11) % 28)),
+    address: CITIES[i % CITIES.length]
+  }
+})
 
 const columns: ColumnDef<Person>[] = [
   { accessorKey: 'name', header: 'Name' },
   { accessorKey: 'email', header: 'Email' },
+  { accessorKey: 'age', header: 'Age' },
+  { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
   { accessorKey: 'address.city', header: 'City' },
-  { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> }
+  { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
+  { id: 'actions', header: '', cell: ({ row }) => (
+      <button
+        onClick={(event) => {
+          event.stopPropagation()
+          alert(row.original.name)
+        }}
+      >
+        View
+      </button>
+    ) }
 ]
 
 const getRowId = (person: Person) => String(person.id)
@@ -50,7 +83,7 @@ function App() {
         getRowId={getRowId}
         onRowClick={(person) => setSelected(person)}
       />
-      <p>Selected: {selected ? selected.name : 'none'}</p>
+      <p>Selected: {selected ? selected.name : 'none'}. Shift-click headers to sort by several columns.</p>
     </main>
   )
 }
