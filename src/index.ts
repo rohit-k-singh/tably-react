@@ -4,6 +4,8 @@ export { TableLocaleProvider, defaultLocaleText } from './components/locale'
 export type { TableLocaleText } from './components/locale'
 export { TableSearch } from './components/TableSearch'
 export type { TableSearchProps } from './components/TableSearch'
+export { TableColumnsMenu } from './components/TableColumnsMenu'
+export type { TableColumnsMenuProps } from './components/TableColumnsMenu'
 export { TablePagination } from './components/TablePagination'
 export type { TablePaginationProps } from './components/TablePagination'
 export { ColumnFilter } from './components/ColumnFilter'
@@ -13,6 +15,18 @@ export { useTable } from './react/useTable'
 export { flexRender } from './react/flexRender'
 
 export { createTable, getDefaultTableState } from './core/table'
+export type {
+  ColumnOrderInstance,
+  ColumnOrderOptions,
+  ColumnOrderState,
+  ColumnOrderTableState,
+  ColumnVisibilityState,
+  VisibilityColumn,
+  VisibilityColumnDef,
+  VisibilityInstance,
+  VisibilityOptions,
+  VisibilityTableState
+} from './core/features/columns'
 export { filterFns } from './core/features/filtering'
 export type {
   BuiltInFilterFn,
@@ -60,7 +74,10 @@ export type {
   DeepKeys,
   DeepValue,
   DisplayColumnDef,
+  GroupColumnDef,
+  Header,
   HeaderContext,
+  HeaderGroup,
   Renderable,
   ResolvedTableOptions,
   Row,

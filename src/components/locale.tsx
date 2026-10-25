@@ -30,6 +30,12 @@ export interface TableLocaleText {
   previousPage: string
   nextPage: string
   lastPage: string
+  /** Button opening the columns menu. */
+  columnsButton: string
+  showAllColumns: string
+  resetColumns: string
+  moveColumnUp: (columnLabel: string) => string
+  moveColumnDown: (columnLabel: string) => string
 }
 
 export const defaultLocaleText: TableLocaleText = {
@@ -54,7 +60,12 @@ export const defaultLocaleText: TableLocaleText = {
   firstPage: 'First page',
   previousPage: 'Previous page',
   nextPage: 'Next page',
-  lastPage: 'Last page'
+  lastPage: 'Last page',
+  columnsButton: 'Columns',
+  showAllColumns: 'Show all',
+  resetColumns: 'Reset',
+  moveColumnUp: (column) => `Move ${column} up`,
+  moveColumnDown: (column) => `Move ${column} down`
 }
 
 const LocaleContext = createContext<TableLocaleText>(defaultLocaleText)

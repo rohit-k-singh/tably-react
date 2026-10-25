@@ -272,7 +272,7 @@ export function createFilteringTableApi<TData extends RowData>(
         table.getState().columnFilters,
         table.getState().globalFilter,
         table.options.manualFiltering,
-        table.getAllColumns()
+        table.getAllLeafColumns()
       ],
       (rowModel, columnFilters, globalFilter, manualFiltering, _columns) =>
         manualFiltering ? rowModel : filterRowModel(table, rowModel, columnFilters, globalFilter)
@@ -296,7 +296,7 @@ function filterRowModel<TData extends RowData>(
   const globalFn = resolveFilterFn(table.options.globalFilterFn ?? 'includesString')
   const globalColumns = shouldAutoRemove(globalFn, globalFilter)
     ? []
-    : table.getAllColumns().filter((column) => column.getCanGlobalFilter())
+    : table.getAllLeafColumns().filter((column) => column.getCanGlobalFilter())
   const hasGlobalFilter = globalColumns.length > 0
 
   if (activeFilters.length === 0 && !hasGlobalFilter) return rowModel

@@ -1,5 +1,6 @@
 import { filterFns } from '../core/features/filtering'
 import type { Column, RowData, TableInstance } from '../core/types'
+import { columnLabel } from './columnLabel'
 import { useLocaleText, type TableLocaleText } from './locale'
 import { useDebouncedState } from './useDebouncedState'
 
@@ -24,7 +25,7 @@ const toInputValue = (value: unknown) => {
 export function ColumnFilter<TData extends RowData>({ table, column, debounceMs = 200 }: ColumnFilterProps<TData>) {
   const text = useLocaleText()
   const fn = column.getFilterFn()
-  const label = typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id
+  const label = columnLabel(column)
 
   if (fn === filterFns.inNumberRange || fn === filterFns.inDateRange) {
     const type = fn === filterFns.inNumberRange ? 'number' : 'date'

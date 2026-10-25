@@ -1,6 +1,6 @@
-import { StrictMode, useState } from 'react'
+import { StrictMode, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Table, TableSearch, type ColumnDef } from '../src'
+import { Table, TableColumnsMenu, TableSearch, type ColumnDef, type TableProps } from '../src'
 import '../src/styles.css'
 
 interface Person {
@@ -25,30 +25,48 @@ const CITIES = [
 ]
 const ROLES: Person['role'][] = ['Admin', 'Editor', 'Viewer']
 
-const people: Person[] = Array.from({ length: 25 }, (_, i) => {
-  const first = FIRST[i % FIRST.length]
-  const last = LAST[(i * 3) % LAST.length]
-  return {
-    id: i + 1,
-    name: `${first} ${last}`,
-    email: `${first.toLowerCase()}.${last.toLowerCase()}@example.com`,
-    role: ROLES[i % ROLES.length],
-    age: 22 + ((i * 7) % 50),
-    joined: new Date(2015 + (i % 10), (i * 5) % 12, 1 + ((i * 11) % 28)),
-    active: i % 4 !== 0,
-    address: CITIES[i % CITIES.length]
-  }
-})
+function makePeople(count: number): Person[] {
+  return Array.from({ length: count }, (_, i) => {
+    const first = FIRST[i % FIRST.length]
+    const last = LAST[(i * 3) % LAST.length]
+    return {
+      id: i + 1,
+      name: `${first} ${last}`,
+      email: `${first.toLowerCase()}.${last.toLowerCase()}@example.com`,
+      role: ROLES[i % ROLES.length],
+      age: 22 + ((i * 7) % 50),
+      joined: new Date(2015 + (i % 10), (i * 5) % 12, 1 + ((i * 11) % 28)),
+      active: i % 4 !== 0,
+      address: CITIES[i % CITIES.length]
+    }
+  })
+}
+
+const people = makePeople(25)
 
 const columns: ColumnDef<Person>[] = [
-  { accessorKey: 'name', header: 'Name', minWidth: 160 },
-  { accessorKey: 'email', header: 'Email' },
-  { accessorKey: 'age', header: 'Age', align: 'end', width: 140 },
-  { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
+  {
+    header: 'Person',
+    columns: [
+      { accessorKey: 'name', header: 'Name', minWidth: 160 },
+      { accessorKey: 'email', header: 'Email' },
+      { accessorKey: 'age', header: 'Age', align: 'end', width: 140 }
+    ]
+  },
+  {
+    header: 'Work',
+    columns: [
+      { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
+      { accessorKey: 'joined', header: 'Joined', cell: ({ getValue }) => getValue().toLocaleDateString() },
+      { accessorKey: 'active', header: 'Active', cell: ({ getValue }) => (getValue() ? 'Yes' : 'No') }
+    ]
+  },
   { accessorKey: 'address.city', header: 'City' },
-  { accessorKey: 'role', header: 'Role', cell: ({ getValue }) => <strong>{getValue()}</strong> },
-  { accessorKey: 'active', header: 'Active', cell: ({ getValue }) => (getValue() ? 'Yes' : 'No') },
-  { id: 'actions', header: '', cell: ({ row }) => (
+  {
+    id: 'actions',
+    header: '',
+    enableHiding: false,
+    cell: ({ row }) => (
       <button
         onClick={(event) => {
           event.stopPropagation()
@@ -57,77 +75,97 @@ const columns: ColumnDef<Person>[] = [
       >
         View
       </button>
-    ) }
+    )
+  }
 ]
 
 const getRowId = (person: Person) => String(person.id)
+
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label>
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} /> {label}
+    </label>
+  )
+}
+
+function Choice<T extends string>({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  value: T
+  options: T[]
+  onChange: (value: T) => void
+}) {
+  return (
+    <label>
+      {label}{' '}
+      <select value={value} onChange={(e) => onChange(e.target.value as T)}>
+        {options.map((option) => (
+          <option key={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function Controls({ children }: { children: ReactNode }) {
+  return <p style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.25rem' }}>{children}</p>
+}
 
 function App() {
   const [loading, setLoading] = useState(false)
   const [empty, setEmpty] = useState(false)
   const [filters, setFilters] = useState(true)
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light')
-  const [density, setDensity] = useState<'compact' | 'standard' | 'comfortable'>('standard')
   const [striped, setStriped] = useState(false)
   const [bordered, setBordered] = useState(false)
+  const [dragging, setDragging] = useState(true)
+  const [theme, setTheme] = useState<NonNullable<TableProps<Person>['theme']>>('light')
+  const [density, setDensity] = useState<NonNullable<TableProps<Person>['density']>>('standard')
   const [selected, setSelected] = useState<Person | null>(null)
 
   return (
-    <main style={{ maxWidth: 1100, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
+    <main style={{ maxWidth: 1200, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1>tably-react playground</h1>
-      <p>
-        <label>
-          <input type="checkbox" checked={loading} onChange={(e) => setLoading(e.target.checked)} /> Loading
-        </label>{' '}
-        <label>
-          <input type="checkbox" checked={empty} onChange={(e) => setEmpty(e.target.checked)} /> Empty
-        </label>{' '}
-        <label>
-          <input type="checkbox" checked={filters} onChange={(e) => setFilters(e.target.checked)} /> Column filters
-        </label>{' '}
-        <label>
-          <input type="checkbox" checked={striped} onChange={(e) => setStriped(e.target.checked)} /> Striped
-        </label>{' '}
-        <label>
-          <input type="checkbox" checked={bordered} onChange={(e) => setBordered(e.target.checked)} /> Bordered
-        </label>{' '}
-        <label>
-          Theme{' '}
-          <select value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}>
-            <option>light</option>
-            <option>dark</option>
-            <option>auto</option>
-          </select>
-        </label>{' '}
-        <label>
-          Density{' '}
-          <select value={density} onChange={(e) => setDensity(e.target.value as typeof density)}>
-            <option>compact</option>
-            <option>standard</option>
-            <option>comfortable</option>
-          </select>
-        </label>
-      </p>
+      <Controls>
+        <Toggle label="Loading" value={loading} onChange={setLoading} />
+        <Toggle label="Empty" value={empty} onChange={setEmpty} />
+        <Toggle label="Column filters" value={filters} onChange={setFilters} />
+        <Toggle label="Striped" value={striped} onChange={setStriped} />
+        <Toggle label="Bordered" value={bordered} onChange={setBordered} />
+        <Toggle label="Drag headers" value={dragging} onChange={setDragging} />
+        <Choice label="Theme" value={theme} options={['light', 'dark', 'auto']} onChange={setTheme} />
+        <Choice
+          label="Density"
+          value={density}
+          options={['compact', 'standard', 'comfortable']}
+          onChange={setDensity}
+        />
+      </Controls>
       <Table
-        aria-label="People"
+        caption="Team directory"
         data={empty ? [] : people}
         columns={columns}
         loading={loading}
         getRowId={getRowId}
         showColumnFilters={filters}
+        enableColumnDragging={dragging}
         theme={theme}
         density={density}
         striped={striped}
         bordered={bordered}
         highlightOnHover
-        caption="Team directory"
         enablePagination
         initialState={{ pagination: { pageIndex: 0, pageSize: 5 } }}
         pageSizeOptions={[5, 10, 25]}
         toolbar={(table) => (
           <>
             <TableSearch table={table} />
-            <span style={{ marginLeft: 'auto', color: '#6b7280' }}>
+            <TableColumnsMenu table={table} />
+            <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
               {table.getFilteredRowModel().rows.length} of {table.getCoreRowModel().rows.length} people
             </span>
           </>

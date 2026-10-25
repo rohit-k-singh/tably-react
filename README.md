@@ -12,6 +12,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
+- Columns: multi-level header groups, show / hide and reorder (menu or drag and drop)
 - Accessible: sort buttons with `aria-sort`, keyboard-operable clickable rows, `aria-busy` while loading
 
 > **Status: early release (0.x).** The API may still change between minor versions until 1.0.
@@ -52,13 +53,29 @@ only recomputed when they actually change.
 
 ## Columns
 
-There are three kinds of column definitions:
+There are four kinds of column definitions:
 
 | Kind | Required fields | Value |
 | --- | --- | --- |
 | Accessor key | `accessorKey` | Row property at a path, e.g. `'name'` or `'address.city'`. The path is type-checked. |
 | Accessor function | `id`, `accessorFn` | Computed from the row: `accessorFn: (row, index) => row.price * row.quantity` |
 | Display | `id` | No value; for content such as action buttons. |
+| Group | `columns`, and `id` or a string `header` | A header spanning the columns inside it, which can be groups too. |
+
+```ts
+const columns: ColumnDef<User>[] = [
+  { accessorKey: 'id', header: 'ID' },
+  {
+    header: 'Contact',
+    columns: [
+      { accessorKey: 'name', header: 'Name' },
+      { accessorKey: 'email', header: 'Email' }
+    ]
+  }
+]
+```
+
+Columns outside groups span all header rows below them, so there are no empty placeholder cells.
 
 Every column accepts:
 
@@ -250,6 +267,32 @@ In code: `table.nextPage()`, `previousPage()`, `firstPage()`, `lastPage()`, `set
 `<TablePagination table />` is the footer component, for custom layouts; it accepts `pageSizeOptions` and
 `showFirstLastButtons`.
 
+## Column visibility and order
+
+```tsx
+import { Table, TableColumnsMenu } from 'tably-react'
+
+<Table data={users} columns={columns} enableColumnDragging toolbar={(table) => <TableColumnsMenu table={table} />} />
+```
+
+`TableColumnsMenu` is a "Columns" button opening a list with a checkbox per column, move up / down buttons
+(`enableOrdering={false}` hides them), "Show all" and "Reset". It closes on Escape or a click outside. With
+`enableColumnDragging`, headers can also be dragged onto each other to reorder columns.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `initialState.columnVisibility` | `{}` | Hidden columns, e.g. `{ email: false }`. |
+| `state.columnVisibility` + `onColumnVisibilityChange` | | Control visibility yourself. |
+| `enableHiding` (table or column) | `true` | Allow hiding columns. |
+| `initialState.columnOrder` | `[]` | Column ids in display order; unlisted columns follow in definition order. |
+| `state.columnOrder` + `onColumnOrderChange` | | Control the order yourself. |
+| `enableColumnDragging` | `false` | Drag headers to reorder (`<Table>` only). |
+
+In code: `column.toggleVisibility(visible?)`, `column.getIsVisible()`, `table.toggleAllColumnsVisible()`,
+`table.moveColumn(id, index)`, `table.setColumnOrder(ids)`, `table.resetColumnVisibility()` and
+`table.resetColumnOrder()`. A hidden group hides all its columns. When reordering separates the columns of a group,
+its header is repeated over each part.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -258,7 +301,7 @@ In code: `table.nextPage()`, `previousPage()`, `firstPage()`, `lastPage()`, `set
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering) and [Pagination](#pagination). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -315,19 +358,21 @@ function MyTable({ data }: { data: User[] }) {
   return (
     <table>
       <thead>
-        <tr>
-          {table.getAllColumns().map((column) => (
-            <th key={column.id} onClick={column.getToggleSortingHandler()}>
-              {flexRender(column.columnDef.header ?? column.id, { table, column })}
-              {column.getIsSorted() === 'asc' ? ' ▲' : column.getIsSorted() === 'desc' ? ' ▼' : null}
-            </th>
-          ))}
-        </tr>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id}>
+            {headerGroup.headers.map(({ id, column, colSpan, rowSpan, getContext }) => (
+              <th key={id} colSpan={colSpan} rowSpan={rowSpan} onClick={column.getToggleSortingHandler()}>
+                {flexRender(column.columnDef.header ?? column.id, getContext())}
+                {column.getIsSorted() === 'asc' ? ' ▲' : column.getIsSorted() === 'desc' ? ' ▼' : null}
+              </th>
+            ))}
+          </tr>
+        ))}
       </thead>
       <tbody>
         {table.getRowModel().rows.map((row) => (
           <tr key={row.id}>
-            {row.getCells().map((cell) => (
+            {row.getVisibleCells().map((cell) => (
               <td key={cell.id}>{flexRender(cell.column.columnDef.cell ?? String(cell.getValue() ?? ''), cell.getContext())}</td>
             ))}
           </tr>
@@ -397,7 +442,8 @@ With Tailwind, use `classNames` (and skip the stylesheet if you style everything
 
 To style from scratch, skip the stylesheet and target the class names: `tably-container`, `tably-toolbar`,
 `tably-search`, `tably-scroll`, `tably-footer`, `tably-pagination`, `tably-page-size`, `tably-page-range`, `tably-page-nav`,
-`tably-page-button`, `tably-page-status`, `tably-caption`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
+`tably-menu`, `tably-button`, `tably-icon-button`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

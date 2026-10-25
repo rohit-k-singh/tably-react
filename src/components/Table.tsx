@@ -1,4 +1,4 @@
-import type { CSSProperties, HTMLAttributes, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import { useState, type CSSProperties, type HTMLAttributes, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import type { Column, Row, RowData, TableInstance, TableOptions } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { useTable } from '../react/useTable'
@@ -73,6 +73,8 @@ export interface TableProps<TData extends RowData> extends TableOptions<TData> {
   filterDebounceMs?: number
   /** Page size choices shown with `enablePagination`. Pass an empty array to hide the select. */
   pageSizeOptions?: number[]
+  /** Lets users reorder columns by dragging their headers. */
+  enableColumnDragging?: boolean
   /** Accessible label for the table. */
   'aria-label'?: string
 }
@@ -115,13 +117,15 @@ function TableContent<TData extends RowData>({
   showColumnFilters = false,
   filterDebounceMs = 200,
   pageSizeOptions,
+  enableColumnDragging = false,
   'aria-label': ariaLabel,
   ...options
 }: Omit<TableProps<TData>, 'localeText'>) {
   const table = useTable(options)
   const text = useLocaleText()
-  const columns = table.getAllColumns()
+  const columns = table.getVisibleLeafColumns()
   const { rows } = table.getRowModel()
+  const [draggedColumnId, setDraggedColumnId] = useState<string>()
 
   const renderMessage = (className: string, content: ReactNode) => (
     <tr>
@@ -162,7 +166,7 @@ function TableContent<TData extends RowData>({
         onKeyDown={onRowClick ? handleKeyDown : onKeyDown}
         tabIndex={onRowClick ? 0 : rowProps.tabIndex}
       >
-        {row.getCells().map((cell) => {
+        {row.getVisibleCells().map((cell) => {
           const { cell: renderCell, className: cellClassName, align } = cell.column.columnDef
           return (
             <td
@@ -220,17 +224,34 @@ function TableContent<TData extends RowData>({
         >
           {caption !== undefined && <caption className={cx('tably-caption', classNames.caption)}>{caption}</caption>}
           <thead className={cx('tably-thead', classNames.thead)}>
-            <tr className={classNames.headerRow}>
-              {columns.map((column) => (
-                <HeaderCell
-                  key={column.id}
-                  table={table}
-                  column={column}
-                  className={classNames.th}
-                  style={columnStyle(column)}
-                />
-              ))}
-            </tr>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className={classNames.headerRow}>
+                {headerGroup.headers.map((header) => (
+                  <HeaderCell
+                    key={header.id}
+                    table={table}
+                    header={header}
+                    className={classNames.th}
+                    style={header.column.columns.length === 0 ? columnStyle(header.column) : undefined}
+                    dragging={
+                      enableColumnDragging && header.column.columns.length === 0
+                        ? {
+                            draggedColumnId,
+                            onDragStart: () => setDraggedColumnId(header.column.id),
+                            onDragEnd: () => setDraggedColumnId(undefined),
+                            onDrop: () => {
+                              if (draggedColumnId === undefined) return
+                              const target = table.getOrderedLeafColumns().indexOf(header.column)
+                              table.moveColumn(draggedColumnId, target)
+                              setDraggedColumnId(undefined)
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </tr>
+            ))}
             {showColumnFilters && (
               <tr className={cx('tably-filter-row', classNames.filterRow)}>
                 {columns.map((column) => (

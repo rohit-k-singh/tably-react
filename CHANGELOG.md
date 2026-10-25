@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Column groups with multi-level headers (`columns` in a column definition).
+- Column visibility and ordering state, `TableColumnsMenu`, and drag-and-drop header reordering
+  (`enableColumnDragging`).
+- `table.getAllColumns()` now returns top-level columns; use `getAllLeafColumns()` or `getVisibleLeafColumns()`
+  for the flat list, `getHeaderGroups()` for header rows and `row.getVisibleCells()` for cells.
+
 ## 0.0.1
 
 First release of the rewritten package. Versioning restarts at 0.x, so the API may still change between minor
