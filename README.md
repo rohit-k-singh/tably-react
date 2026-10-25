@@ -12,6 +12,7 @@ A customizable React table component written in TypeScript, with zero runtime de
 - Sorting: multi-column, natural string order, custom comparators, client or server side
 - Filtering: global search, per-column filters with built-in controls, custom filter functions, client or server side
 - Pagination: page navigation and page size, client or server side
+- Virtualization: render only the visible rows of tens of thousands, with measured (variable) row heights
 - Expanding rows: tree data with indentation, or detail panels under rows
 - Row selection: checkboxes, select all (filtered rows or page), Shift-click ranges, single selection
 - Columns: multi-level header groups, show / hide and reorder (menu or drag and drop), resize, pin left / right,
@@ -408,6 +409,33 @@ In code: `row.toggleExpanded(expanded?)`, `row.getIsExpanded()`, `row.getCanExpa
 `table.resetExpanded()`. Row models have `rows` (top level) and `flatRows` (every row); `table.getRowModel().rows`
 is the flat list of rows to render.
 
+## Virtualization
+
+For large row counts without pagination, render only the rows in view:
+
+```tsx
+<Table data={hundredThousandRows} columns={columns} enableVirtualization maxHeight={600} stickyHeader />
+```
+
+The table scrolls within `maxHeight` (600px by default) and keeps about 20–40 rows in the DOM. Rows can have different
+heights (wrapping text, detail panels): they are measured as they render, and measurements stay with their row ids
+when sorting changes the order. The table gets `aria-rowcount` and rows `aria-rowindex`, so screen readers announce
+positions in the whole table.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enableVirtualization` | `false` | Render only the visible rows (`<Table>` only). |
+| `maxHeight` | `600` with virtualization | Height of the scrolling area. |
+| `estimateRowHeight` | 34 / 46 / 54 by density | Row height used before a row is measured. |
+| `overscan` | `10` | Rows rendered above and below the visible ones. |
+
+Browsers limit how tall an element can be (about 17 million pixels in Firefox), which allows roughly 350,000 rows at
+the standard density.
+
+For custom markup, `useVirtualizer({ count, estimateSize, getScrollElement, getItemKey, overscan })` returns the
+`items` to render, `paddingStart` / `paddingEnd` for spacer elements, `measureElement` (a ref callback for elements
+with a `data-index`) and `scrollToIndex(index, align)`.
+
 ## `<Table>` props
 
 | Prop | Type | Default | Description |
@@ -416,7 +444,7 @@ is the flat list of rows to render.
 | `columns` | `ColumnDef<T>[]` | required | Column definitions. |
 | `getRowId` | `(row, index) => string` | row index | Stable id per row. Provide it when rows can be reordered, added or removed. |
 | `initialState`, `state` | `Partial<TableState>` | | Uncontrolled starting state, and controlled state. |
-| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection) and [Expanding rows](#expanding-rows). |
+| Feature options | | | See [Sorting](#sorting), [Filtering](#filtering), [Pagination](#pagination) and [Column visibility and order](#column-visibility-and-order) and [Column sizing, pinning and sticky header](#column-sizing-pinning-and-sticky-header), [Row selection](#row-selection), [Expanding rows](#expanding-rows) and [Virtualization](#virtualization). |
 | `onRowClick` | `(original, row) => void` | | Makes rows clickable and keyboard-operable (Enter / Space). Call `event.stopPropagation()` in buttons inside rows to avoid triggering it. |
 | `loading` | `boolean` | `false` | Replaces the body with a loading indicator and sets `aria-busy`. |
 | `emptyMessage` | `ReactNode` | `'No data available'` | Shown when there are no rows. |
@@ -563,7 +591,7 @@ To style from scratch, skip the stylesheet and target the class names: `tably-co
 `tably-page-button`, `tably-page-status`, `tably-caption`, `tably-th-group`, `tably-th-draggable`, `tably-columns-menu`,
 `tably-menu`, `tably-button`, `tably-icon-button`, `tably-th-content`, `tably-column-actions`, `tably-resize-handle`,
 `tably-popover`, `[data-pinned]`, `tably-checkbox`, `tably-select-cell`, `[data-selected]`, `tably-tree-cell`, `tably-expand-button`, `tably-expand-cell`,
-`tably-detail-row`, `tably-detail-cell`, `[data-depth]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
+`tably-detail-row`, `tably-detail-cell`, `[data-depth]`, `tably-spacer`, `[data-stripe]`, `tably-table`, `tably-filter-row`, `tably-filter-cell`, `tably-input`, `tably-no-results`, `tably-thead`,
 `tably-th`, `tably-th-sortable`, `tably-sort-button`, `tably-sort-indicator`, `tably-sort-index`, `tably-tbody`, `tably-tr`, `tably-tr-clickable`, `tably-td`, `tably-empty`, `tably-loading`, `tably-spinner`.
 
 ## Development

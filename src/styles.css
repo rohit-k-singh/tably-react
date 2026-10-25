@@ -580,7 +580,7 @@
 }
 
 /* <Table striped> */
-:where(.tably-container[data-striped] .tably-tbody .tably-tr:nth-child(even)) {
+:where(.tably-container[data-striped] .tably-tbody .tably-tr[data-stripe]) {
   --_t-row-bg: var(--_t-stripe-bg);
 }
 
@@ -663,6 +663,12 @@
   padding: var(--_t-cell-padding-y) var(--_t-cell-padding-x);
   background: var(--_t-stripe-bg);
   border-bottom: 1px solid var(--_t-border-color);
+}
+
+/* Spacer rows standing in for rows outside the view with enableVirtualization. */
+:where(.tably-spacer > td) {
+  padding: 0;
+  border: 0;
 }
 
 :where(.tably-caption) {
