@@ -1,5 +1,12 @@
 import type { ComponentClass, ExoticComponent, ReactNode } from 'react'
 import type {
+  FilteringColumn,
+  FilteringColumnDef,
+  FilteringInstance,
+  FilteringOptions,
+  FilteringTableState
+} from './features/filtering'
+import type {
   SortingColumn,
   SortingColumnDef,
   SortingInstance,
@@ -80,7 +87,9 @@ export type Renderable<TContext> =
   | ComponentClass<TContext>
   | ExoticComponent<TContext>
 
-export interface ColumnDefBase<TData extends RowData, TValue> extends SortingColumnDef<TData> {
+export interface ColumnDefBase<TData extends RowData, TValue>
+  extends SortingColumnDef<TData>,
+    FilteringColumnDef<TData> {
   /** Header cell content. Defaults to the column id. */
   header?: Renderable<HeaderContext<TData>>
   /** Body cell content. Defaults to the formatted cell value. */
@@ -89,6 +98,11 @@ export interface ColumnDefBase<TData extends RowData, TValue> extends SortingCol
   className?: string
   /** Class name added to the header cell of the column. */
   headerClassName?: string
+  /**
+   * Filter control shown in the filter row (`<Table showColumnFilters>`).
+   * Defaults to an input matching the column's filter function.
+   */
+  filter?: Renderable<HeaderContext<TData>>
   meta?: ColumnMeta<TData, TValue>
 }
 
@@ -138,7 +152,9 @@ export interface AnyColumnDef<TData extends RowData> extends ColumnDefBase<TData
   accessorFn?: (row: TData, index: number) => unknown
 }
 
-export interface Column<TData extends RowData> extends SortingColumn<TData> {
+export interface Column<TData extends RowData>
+  extends SortingColumn<TData>,
+    FilteringColumn<TData> {
   id: string
   /** The definition this column was created from. */
   columnDef: AnyColumnDef<TData>
@@ -175,9 +191,11 @@ export interface RowModel<TData extends RowData> {
   rowsById: Record<string, Row<TData>>
 }
 
-export interface TableState extends SortingTableState {}
+export interface TableState extends SortingTableState, FilteringTableState {}
 
-export interface TableOptions<TData extends RowData> extends SortingOptions {
+export interface TableOptions<TData extends RowData>
+  extends SortingOptions,
+    FilteringOptions<TData> {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
@@ -196,7 +214,9 @@ export interface ResolvedTableOptions<TData extends RowData> extends TableOption
   onStateChange: (updater: Updater<TableState>) => void
 }
 
-export interface TableInstance<TData extends RowData> extends SortingInstance<TData> {
+export interface TableInstance<TData extends RowData>
+  extends SortingInstance<TData>,
+    FilteringInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState

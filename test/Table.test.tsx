@@ -98,7 +98,7 @@ describe('Table', () => {
       />
     )
 
-    expect(screen.getByRole('table').parentElement).toHaveClass('tably-container', 'custom')
+    expect(screen.getByRole('table').closest('.tably-container')).toHaveClass('custom')
     expect(screen.getByRole('columnheader')).toHaveClass('tably-th', 'name-header')
     expect(screen.getByRole('cell')).toHaveClass('tably-td', 'name-cell')
   })

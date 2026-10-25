@@ -1,3 +1,4 @@
+import { createFilteringColumnApi } from './features/filtering'
 import { createSortingColumnApi } from './features/sorting'
 import type { AnyColumnDef, Column, ColumnDef, RowData, TableInstance } from './types'
 import { getByPath } from './utils'
@@ -25,6 +26,6 @@ export function createColumns<TData extends RowData>(
       (accessorKey !== undefined ? (row: TData) => getByPath(row, accessorKey) : undefined)
 
     const column = { id, columnDef, index, accessorFn } as Column<TData>
-    return Object.assign(column, createSortingColumnApi(table, column))
+    return Object.assign(column, createSortingColumnApi(table, column), createFilteringColumnApi(table, column))
   })
 }
