@@ -1,4 +1,4 @@
-import { createRowModel } from '../rows'
+import { cloneRow, createRowModel } from '../rows'
 import { makeStateUpdater } from '../state'
 import type { Column, Row, RowData, RowModel, TableInstance, Updater } from '../types'
 import { functionalUpdate, memo } from '../utils'
@@ -301,10 +301,18 @@ function filterRowModel<TData extends RowData>(
 
   if (activeFilters.length === 0 && !hasGlobalFilter) return rowModel
 
-  const rows = rowModel.rows.filter(
-    (row) =>
-      activeFilters.every(({ id, value, fn }) => fn(row, id, value)) &&
-      (!hasGlobalFilter || globalColumns.some((column) => globalFn(row, column.id, globalFilter)))
-  )
-  return createRowModel(rows)
+  const matches = (row: Row<TData>) =>
+    activeFilters.every(({ id, value, fn }) => fn(row, id, value)) &&
+    (!hasGlobalFilter || globalColumns.some((column) => globalFn(row, column.id, globalFilter)))
+
+  // A row stays when it matches or when any of its descendants does, so matches keep their ancestors.
+  const filterRows = (rows: Row<TData>[]): Row<TData>[] =>
+    rows.flatMap((row) => {
+      if (row.subRows.length === 0) return matches(row) ? [row] : []
+      const subRows = filterRows(row.subRows)
+      if (subRows.length === 0 && !matches(row)) return []
+      return [subRows.length === row.subRows.length ? row : cloneRow(table, row, subRows)]
+    })
+
+  return createRowModel(filterRows(rowModel.rows))
 }

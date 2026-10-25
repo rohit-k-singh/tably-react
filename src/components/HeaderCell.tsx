@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type DragEvent } from 'react'
+import { useState, type CSSProperties, type DragEvent, type ReactNode } from 'react'
 import type { Header, RowData, TableInstance } from '../core/types'
 import { flexRender } from '../react/flexRender'
 import { headerPinnedAttributes } from './cellStyle'
@@ -19,7 +19,8 @@ export function HeaderCell<TData extends RowData>({
   className,
   style,
   dragging,
-  showActions
+  showActions,
+  leading
 }: {
   table: TableInstance<TData>
   header: Header<TData>
@@ -27,6 +28,8 @@ export function HeaderCell<TData extends RowData>({
   style?: CSSProperties
   dragging?: HeaderDragging
   showActions?: boolean
+  /** Content before the header label, e.g. an expand-all button. */
+  leading?: ReactNode
 }) {
   const { column } = header
   const { header: content, headerClassName, align } = column.columnDef
@@ -84,6 +87,7 @@ export function HeaderCell<TData extends RowData>({
       {...dragProps}
     >
       <div className="tably-th-content">
+        {leading}
         {canSort ? (
           <button type="button" className="tably-sort-button" onClick={column.getToggleSortingHandler()}>
             {rendered}

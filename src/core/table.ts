@@ -4,6 +4,7 @@ import {
   createColumnOrderTableApi,
   createVisibilityTableApi
 } from './features/columns'
+import { createExpandingTableApi } from './features/expanding'
 import { createFilteringTableApi } from './features/filtering'
 import { createPaginationTableApi, getDefaultPaginationState } from './features/pagination'
 import { createPinningTableApi, getDefaultColumnPinning } from './features/pinning'
@@ -11,7 +12,7 @@ import { createSelectionTableApi } from './features/selection'
 import { createSizingTableApi } from './features/sizing'
 import { createSortingTableApi } from './features/sorting'
 import { createRow, createRowModel } from './rows'
-import type { ResolvedTableOptions, RowData, TableInstance, TableState } from './types'
+import type { ResolvedTableOptions, Row, RowData, TableInstance, TableState } from './types'
 import { memo } from './utils'
 
 export function getDefaultTableState(): TableState {
@@ -24,7 +25,8 @@ export function getDefaultTableState(): TableState {
     columnOrder: [],
     columnSizing: {},
     columnPinning: getDefaultColumnPinning(),
-    rowSelection: {}
+    rowSelection: {},
+    expanded: {}
   }
 }
 
@@ -91,11 +93,17 @@ export function createTable<TData extends RowData>(
   table.getCoreRowModel = memo(
     () => [table.options.data, table.getAllColumns()],
     (data, _columns) => {
-      const getRowId = table.options.getRowId
-      const rows = data.map((original, index) =>
-        createRow(table, getRowId ? getRowId(original, index) : String(index), original, index)
-      )
-      return createRowModel(rows)
+      const { getRowId, getSubRows } = table.options
+      const build = (originals: TData[], depth: number, parent?: Row<TData>): Row<TData>[] =>
+        originals.map((original, index) => {
+          const id = getRowId ? getRowId(original, index, parent) : parent ? `${parent.id}.${index}` : String(index)
+          const subRows: Row<TData>[] = []
+          const row = createRow(table, { id, original, index, depth, parentId: parent?.id, subRows })
+          const children = getSubRows?.(original, index)
+          if (children?.length) subRows.push(...build(children, depth + 1, row))
+          return row
+        })
+      return createRowModel(build(data, 0))
     }
   )
 
@@ -103,7 +111,9 @@ export function createTable<TData extends RowData>(
   Object.assign(table, createSortingTableApi(table, table.getFilteredRowModel))
   Object.assign(table, createPaginationTableApi(table, table.getSortedRowModel))
 
-  table.getRowModel = () => table.getPaginationRowModel()
+  Object.assign(table, createExpandingTableApi(table, table.getPaginationRowModel))
+
+  table.getRowModel = () => table.getExpandedRowModel()
 
   Object.assign(table, createSelectionTableApi(table))
 

@@ -39,18 +39,24 @@ function SelectAllCheckbox<TData extends RowData>({
 
 function RowCheckbox<TData extends RowData>({ table, row }: { table: TableInstance<TData>; row: Row<TData> }) {
   const text = useLocaleText()
+  // Parents read as checked when all their sub rows are selected, and indeterminate when some are.
+  const checked = row.getIsSelected() || row.getIsAllSubRowsSelected()
+  const indeterminate = !checked && row.getIsSomeSelected()
   return (
     <input
       type="checkbox"
       className="tably-checkbox"
       aria-label={text.selectRow}
-      checked={row.getIsSelected()}
+      checked={checked}
+      ref={(input) => {
+        if (input) input.indeterminate = indeterminate
+      }}
       disabled={!row.getCanSelect()}
       onChange={() => {}}
       onClick={(event) => {
         event.stopPropagation()
         const anchor = anchors.get(table)
-        const selected = !row.getIsSelected()
+        const selected = !checked
         if (event.shiftKey && anchor !== undefined && (table.options.enableMultiRowSelection ?? true)) {
           table.setRowRangeSelected(anchor, row.id, selected)
         } else {

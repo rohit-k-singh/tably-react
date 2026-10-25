@@ -4,6 +4,7 @@ import { Table, TableColumnsMenu, TableSearch, type ColumnDef, type TableProps }
 import '../src/styles.css'
 
 interface Person {
+  reports?: Person[]
   id: number
   name: string
   email: string
@@ -43,6 +44,11 @@ function makePeople(count: number): Person[] {
 }
 
 const people = makePeople(25)
+
+/** Every fifth person manages the next four. */
+const team: Person[] = people
+  .filter((_, i) => i % 5 === 0)
+  .map((manager, i) => ({ ...manager, reports: people.slice(i * 5 + 1, i * 5 + 5) }))
 
 const columns: ColumnDef<Person>[] = [
   {
@@ -129,6 +135,7 @@ function App() {
   const [theme, setTheme] = useState<NonNullable<TableProps<Person>['theme']>>('light')
   const [density, setDensity] = useState<NonNullable<TableProps<Person>['density']>>('standard')
   const [selected, setSelected] = useState<Person | null>(null)
+  const [mode, setMode] = useState<'flat' | 'tree' | 'details'>('flat')
 
   return (
     <main style={{ maxWidth: 1200, margin: '2rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' }}>
@@ -142,6 +149,7 @@ function App() {
         <Toggle label="Drag headers" value={dragging} onChange={setDragging} />
         <Toggle label="Resizable" value={resizing} onChange={setResizing} />
         <Toggle label="Sticky header" value={sticky} onChange={setSticky} />
+        <Choice label="Rows" value={mode} options={['flat', 'tree', 'details']} onChange={setMode} />
         <Choice label="Theme" value={theme} options={['light', 'dark', 'auto']} onChange={setTheme} />
         <Choice
           label="Density"
@@ -152,7 +160,22 @@ function App() {
       </Controls>
       <Table
         caption="Team directory"
-        data={empty ? [] : people}
+        data={empty ? [] : mode === 'tree' ? team : people}
+        getSubRows={mode === 'tree' ? (person) => person.reports : undefined}
+        renderDetailPanel={
+          mode === 'details'
+            ? (row) => (
+                <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '0.25rem 1rem', margin: 0 }}>
+                  <dt>Email</dt>
+                  <dd style={{ margin: 0 }}>{row.original.email}</dd>
+                  <dt>Country</dt>
+                  <dd style={{ margin: 0 }}>{row.original.address.country}</dd>
+                  <dt>Joined</dt>
+                  <dd style={{ margin: 0 }}>{row.original.joined.toDateString()}</dd>
+                </dl>
+              )
+            : undefined
+        }
         columns={columns}
         loading={loading}
         getRowId={getRowId}

@@ -24,6 +24,12 @@ import type {
   PinningTableState
 } from './features/pinning'
 import type {
+  ExpandingInstance,
+  ExpandingOptions,
+  ExpandingRow,
+  ExpandingTableState
+} from './features/expanding'
+import type {
   SelectionInstance,
   SelectionOptions,
   SelectionRow,
@@ -262,11 +268,25 @@ export interface HeaderGroup<TData extends RowData> {
   headers: Header<TData>[]
 }
 
-export interface Row<TData extends RowData> extends SelectionRow {
-  /** Unique row id from `getRowId`; the row index by default. */
+export interface Row<TData extends RowData> extends SelectionRow, ExpandingRow {
+  /**
+   * Unique row id from `getRowId`. Defaults to the row index, and to
+   * `${parentId}.${index}` for sub rows.
+   */
   id: string
-  /** Position of the row in the `data` option. */
+  /** Position of the row among its siblings (in `data`, or in its parent's sub rows). */
   index: number
+  /** Nesting level: 0 for top-level rows. */
+  depth: number
+  /** Id of the parent row, for sub rows. */
+  parentId?: string
+  /** Child rows from `getSubRows`, filtered and sorted like the top-level rows in processed row models. */
+  subRows: Row<TData>[]
+  getParentRow: () => Row<TData> | undefined
+  /** Ancestors from the top-level row down to the parent. */
+  getParentRows: () => Row<TData>[]
+  /** All descendants, depth first. */
+  getLeafRows: () => Row<TData>[]
   /** The row object passed in `data`. */
   original: TData
   /** Value of the given column for this row. Cached after the first read. */
@@ -287,7 +307,10 @@ export interface Cell<TData extends RowData> {
 }
 
 export interface RowModel<TData extends RowData> {
+  /** Top-level rows (in the expanded row model: every visible row, flattened). */
   rows: Row<TData>[]
+  /** Every row including sub rows, depth first. */
+  flatRows: Row<TData>[]
   rowsById: Record<string, Row<TData>>
 }
 
@@ -299,7 +322,8 @@ export interface TableState
     ColumnOrderTableState,
     SizingTableState,
     PinningTableState,
-    SelectionTableState {}
+    SelectionTableState,
+    ExpandingTableState {}
 
 export interface TableOptions<TData extends RowData>
   extends SortingOptions,
@@ -309,13 +333,17 @@ export interface TableOptions<TData extends RowData>
     ColumnOrderOptions,
     SizingOptions,
     PinningOptions,
-    SelectionOptions<TData> {
+    SelectionOptions<TData>,
+    ExpandingOptions<TData> {
   /** Rows to display. Keep the reference stable (state or `useMemo`) to avoid recomputation. */
   data: TData[]
   /** Column definitions. Keep the reference stable (module scope or `useMemo`). */
   columns: ColumnDef<TData>[]
-  /** Returns a unique, stable id for a row. Defaults to the row index. */
-  getRowId?: (row: TData, index: number) => string
+  /**
+   * Returns a unique, stable id for a row. Defaults to the row index (and
+   * `${parent.id}.${index}` for sub rows).
+   */
+  getRowId?: (row: TData, index: number, parent?: Row<TData>) => string
   /** Controlled state. Any slice set here overrides the internal state. */
   state?: Partial<TableState>
   /** Starting values for uncontrolled state. */
@@ -336,7 +364,8 @@ export interface TableInstance<TData extends RowData>
     ColumnOrderInstance<TData>,
     SizingInstance,
     PinningInstance<TData>,
-    SelectionInstance<TData> {
+    SelectionInstance<TData>,
+    ExpandingInstance<TData> {
   options: ResolvedTableOptions<TData>
   setOptions: (options: ResolvedTableOptions<TData>) => void
   getState: () => TableState
@@ -356,6 +385,6 @@ export interface TableInstance<TData extends RowData>
   getColumn: (columnId: string) => Column<TData> | undefined
   /** Every row in `data`, before any processing. */
   getCoreRowModel: () => RowModel<TData>
-  /** The rows to render, after all processing. */
+  /** The rows to render, after all processing: the current page, with expanded sub rows flattened in. */
   getRowModel: () => RowModel<TData>
 }
