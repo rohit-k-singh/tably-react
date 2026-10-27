@@ -9,6 +9,8 @@ jobs:
   check:
     name: React ${{ matrix.react }}
     runs-on: ubuntu-latest
+    # Fail fast on a hung step instead of waiting for GitHub's 6-hour default, which would hold up releases.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +37,7 @@ jobs:
   e2e:
     name: E2E (${{ matrix.browser }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +50,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+        # Usually under a minute; the system package install occasionally hangs.
+        timeout-minutes: 5
       - run: npm run test:e2e
         env:
           E2E_BROWSERS: ${{ matrix.browser }}
