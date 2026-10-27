@@ -75,7 +75,9 @@ jobs:
           if npm view "tably-react@$VERSION" version > /dev/null 2>&1; then
             echo "tably-react@$VERSION is published already."
           else
-            npm publish --provenance --access public
+            # Explicit tag: npm only moves "latest" implicitly to a higher version, and the old 1.0.x prototype
+            # releases are higher than every 0.x release.
+            npm publish --provenance --access public --tag latest
           fi
 
       - name: GitHub release
